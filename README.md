@@ -15,6 +15,22 @@ python3 -m http.server 4173 --bind 0.0.0.0
 `file://` ile açmak da mümkündür, ancak ES modülleri nedeniyle tarayıcıya göre CORS kısıtları çıkabilir;
 statik sunucu önerilir.
 
+## Testler
+
+Yazma modu ve ek tekrar mantığı için jsdom tabanlı testler `tests/run.mjs` içinde durur.
+Uygulamanın kendisi bağımlılıksız kalır; jsdom yalnızca geliştirme bağımlılığıdır:
+
+```bash
+npm install
+npm test
+```
+
+Testler; alternatif çevirinin kabulünü, hata eşiğinde `kelime|extra:<kaynak>` kartının oluşup
+İyi cevapla emekliye ayrılmasını, kelime/boşluk yazma anahtarlarının bağımsızlığını, ek kartın
+yazma davranışını kaynağından almasını, eski tek `typing` anahtarının taşınmasını, boşluk kartında
+toleranslı eşleşmeyi ve geri bildirimi, son cevabın geri alınmasını ve yedek geri yüklemede eski
+kart/sayaç biçimlerinin taşınmasını kontrol eder.
+
 ## Özellikler
 
 - **Çift yönlü çalışma:** Fince → Türkçe, Türkçe → Fince veya karışık. Her yön ayrı ilerleme tutar.
@@ -64,6 +80,7 @@ assets/data.js      kelime verisi (16 kategori, A1/A2/B1) + CLOZE haritası + y�
 assets/srs.js       zamanlayıcı: schedule(), previewIntervals(), formatInterval()
 assets/store.js     localStorage, günlük sayaçlar, seri, yedekleme
 assets/app.js       çalışma döngüsü, sözlük, istatistik ve ayar bağlantıları
+tests/run.mjs       yazma modu ve ek tekrar testleri (npm test)
 ```
 
 Yeni kelime eklemek için `assets/data.js` içindeki `VOCAB` dizisine kayıt eklemek yeterli:

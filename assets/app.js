@@ -124,7 +124,7 @@ function syncExtraCards(now = Date.now()) {
 
     if (pending >= threshold) {
       if (!card) {
-        state.cards[key] = { ...newCard(fi, "extra"), source, state: "learning", step: 0, due: now, interval: 0 };
+        state.cards[key] = { ...newCard(fi, "extra"), source, state: "learning", step: 0, due: now, interval: 0, retired: false };
       } else if (card.retired) {
         card.retired = false;
         card.state = "learning";
