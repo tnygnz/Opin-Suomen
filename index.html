@@ -135,6 +135,47 @@
           <p class="lede"><span id="dictCount">0</span> kelime · çift yönlü · örnek cümleli</p>
         </div>
 
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Kendi kelimeni ekle</h2>
+            <span class="muted">yalnızca bu tarayıcıda</span>
+          </div>
+          <form id="addWordForm" class="toolbar">
+            <label class="field grow">
+              <span>Fince</span>
+              <input id="newWordFi" type="text" placeholder="esim. sauna" autocomplete="off" lang="fi" />
+            </label>
+            <label class="field grow">
+              <span>Türkçe</span>
+              <input id="newWordTr" type="text" placeholder="esim. sauna" autocomplete="off" lang="tr" />
+            </label>
+            <label class="field">
+              <span>Seviye</span>
+              <select id="newWordLvl">
+                <option value="A1">A1</option>
+                <option value="A2">A2</option>
+                <option value="B1">B1</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Kategori</span>
+              <select id="newWordCat"></select>
+            </label>
+            <label class="field grow">
+              <span>Örnek cümle (isteğe bağlı)</span>
+              <input id="newWordEx" type="text" placeholder="Fince cümle" autocomplete="off" lang="fi" />
+            </label>
+            <label class="field grow">
+              <span>Örnek cümlenin Türkçesi (isteğe bağlı)</span>
+              <input id="newWordExTr" type="text" placeholder="Türkçe çevirisi" autocomplete="off" lang="tr" />
+            </label>
+            <button class="btn primary" type="submit">Ekle</button>
+          </form>
+          <p class="muted small">
+            Eklediğin kelimeler sözlüğe, çalışma kuyruğuna ve JSON yedeğine girer; yalnızca bu tarayıcıda saklanır.
+          </p>
+        </div>
+
         <div class="toolbar">
           <label class="field grow">
             <span>Kelime ara</span>
@@ -247,6 +288,11 @@
           </label>
 
           <label class="field inline">
+            <input type="checkbox" id="conjEnabled" />
+            <span>Fiil çekimi kartları (preesens · altı kişi)</span>
+          </label>
+
+          <label class="field inline">
             <input type="checkbox" id="typingWordsEnabled" />
             <span>Kelime kartlarında cevabı yazarak kontrol et</span>
           </label>
@@ -284,7 +330,9 @@
             <b>Suomi–Türkçe</b>, Fince ve Türkçe arasında çift yönlü çalışan kişisel bir kelime uygulamasıdır.
             Zamanlayıcı, Anki'nin de temel aldığı SM-2 aralıklı tekrar ailesini kullanır: öğrenme adımları
             1 dk → 10 dk, ardından kolaylık çarpanına göre büyüyen aralıklar. Kelime kartlarının yanında,
-            çekimi tanımlı 98 isim için partitiivi, inessiivi ve illatiivi üreten hâl eki kartları da çalışılabilir.
+            çekimi tanımlı 98 isim için partitiivi, inessiivi ve illatiivi üreten hâl eki kartları ile 20 fiilin
+            altı kişideki preesens çekimini soran fiil kartları da çalışılabilir. Sözlükte olmayan kelimeleri
+            kendin ekleyebilirsin: eklenen kelimeler de iki yönlü karta dönüşür ve yedeğe girer.
           </p>
           <p class="muted small">
             Arayüz ve veri modeli, referans olarak alınan AnkiDroid 2.25.3 kurulumunun çalışma biçiminden esinlenmiştir:

@@ -1,5 +1,5 @@
 /* Yerel durum yönetimi: ayarlar, kart ilerlemesi, günlük istatistikler, yedekleme */
-import { VOCAB, DIRS, CASES, formDir } from "./data.js";
+import { VOCAB, DIRS, CASES, formDir, PERSONS, conjDir } from "./data.js";
 import { newCard } from "./srs.js";
 
 // v2: kart anahtarları kelime sırasına değil kelimenin kendisine bağlı
@@ -26,12 +26,15 @@ export function defaultState() {
       autoSpeak: false,
       cloze: true,
       forms: true,
+      conj: true,
       typingWords: true,
       typingCloze: true,
       extraThreshold: 2,
       theme: "light",
     },
     cards: {},
+    // Kullanıcının kendi eklediği kelimeler (yerleşik sözlükten ayrı tutulur).
+    custom: [],
     daily: { date: todayKey(), newDone: 0, reviewDone: 0, correct: 0, total: 0 },
     history: {},
     totals: { reviews: 0, correct: 0 },
@@ -63,11 +66,28 @@ export function ensureCards(state) {
       if (!state.cards[key]) state.cards[key] = newCard(vocab.fi, dir);
     }
   });
+  // Fiil çekimi kartları: altı kişi için ayrı kart, her kişi bağımsız ilerler.
+  VOCAB.forEach((vocab) => {
+    if (!vocab.conj) return;
+    for (const person of Object.keys(PERSONS)) {
+      const dir = conjDir(person);
+      const key = cardKey(vocab, dir);
+      if (!state.cards[key]) state.cards[key] = newCard(vocab.fi, dir);
+    }
+  });
 }
 
 /** Kart anahtarı kelimenin kendisine bağlı: sözlüğe kelime eklemek ilerlemeyi bozmaz. */
 export function cardKey(vocab, dir) {
   return `${vocab.fi}|${dir}`;
+}
+
+/** Bir kelimenin bütün kartlarını (iki yön, boşluk, hâl eki, çekim) siler. */
+export function pruneWordCards(state, fi) {
+  const prefix = `${fi}|`;
+  for (const key of Object.keys(state.cards)) {
+    if (key.startsWith(prefix)) delete state.cards[key];
+  }
 }
 
 /** Eski tek `typing` anahtarını iki bağımsız anahtara çevirir (true/false ikisine de uygulanır). */
@@ -101,6 +121,9 @@ function mergeDefaults(raw) {
       byCard: { ...(raw.typing?.byCard || {}), ...(raw.typing?.byPhrase || {}) },
     },
     cards: raw.cards && typeof raw.cards === "object" ? raw.cards : {},
+    custom: Array.isArray(raw.custom)
+      ? raw.custom.filter((w) => w && typeof w.fi === "string" && typeof w.tr === "string")
+      : [],
     ui: { ...base.ui, ...(raw.ui || {}) },
   };
 }

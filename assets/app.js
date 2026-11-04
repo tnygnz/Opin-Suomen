@@ -1,5 +1,5 @@
 /* Suomi–Türkçe — uygulama mantığı */
-import { VOCAB, CATEGORIES, DIRS, LEVELS, CASES, caseOfDir, formDir } from "./data.js";
+import { VOCAB, CATEGORIES, DIRS, LEVELS, CASES, caseOfDir, formDir, PERSONS, VERB_TYPES, conjOfDir, conjDir } from "./data.js";
 import {
   schedule, previewIntervals, cardStatusLabel, isMature, formatInterval, newCard,
 } from "./srs.js";
@@ -47,6 +47,91 @@ function clozeEnabled() {
 /** Hâl eki (gramer) kartları açık mı? Varsayılan: açık. */
 function formsEnabled() {
   return state.settings.forms !== false;
+}
+
+/** Fiil çekimi kartları açık mı? Varsayılan: açık. */
+function conjEnabled() {
+  return state.settings.conj !== false;
+}
+
+/* ── Kendi kelimelerim ─────────────────────────────
+   Kullanıcı kelimeleri state.custom içinde tutulur ve sözlük dizisinin (VOCAB)
+   sonuna eklenir. Kart anahtarı kelimenin kendisine bağlı olduğu için ekleme
+   ya da silme var olan ilerlemeyi bozmaz. */
+
+const BUILTIN_WORDS = VOCAB.length;
+
+function customEntry(word) {
+  return {
+    fi: word.fi,
+    tr: word.tr,
+    lvl: LEVELS[word.lvl] ? word.lvl : "A1",
+    cat: CATEGORIES[word.cat] ? word.cat : Object.keys(CATEGORIES)[0],
+    ex: Array.isArray(word.ex) && word.ex.length === 2 && word.ex[0] ? word.ex : null,
+    custom: true,
+  };
+}
+
+/** Yerleşik sözlüğü korur, kullanıcı kelimelerini sona yeniden ekler. */
+function applyCustomWords() {
+  if (VOCAB.length > BUILTIN_WORDS) VOCAB.length = BUILTIN_WORDS;
+  for (const word of state.custom || []) VOCAB.push(customEntry(word));
+}
+
+/** Değişiklikten sonra kartları, sayaçları ve sözlüğü tazeler. */
+function persistCustomWords() {
+  applyCustomWords();
+  store.ensureCards(state);
+  store.saveNow(state);
+  // Silinen kelimenin kartı ekranda açıksa çalışma görünümü sıfırlanır.
+  if (current && !state.cards[current.key]) {
+    current = null;
+    revealed = false;
+    clozeChecked = null;
+    undoSnapshot = null;
+  }
+  $("#footWords").textContent = VOCAB.length;
+  renderDictionary();
+  renderCounters();
+  renderStudy();
+  renderStats();
+}
+
+function addCustomWord() {
+  const fi = $("#newWordFi").value.trim().replace(/\s+/g, " ");
+  const tr = $("#newWordTr").value.trim().replace(/\s+/g, " ");
+  if (!fi || !tr) {
+    toast("Fince ve Türkçe alanları zorunlu.");
+    return;
+  }
+  const key = fi.toLocaleLowerCase("fi");
+  if (VOCAB.some((v) => v.fi.toLocaleLowerCase("fi") === key)) {
+    toast(`“${fi}” sözlükte zaten var.`);
+    return;
+  }
+  const exFi = $("#newWordEx").value.trim();
+  const exTr = $("#newWordExTr").value.trim();
+  state.custom = [
+    ...(state.custom || []),
+    {
+      fi,
+      tr,
+      lvl: $("#newWordLvl").value,
+      cat: $("#newWordCat").value,
+      ex: exFi && exTr ? [exFi, exTr] : null,
+    },
+  ];
+  persistCustomWords();
+  $("#addWordForm").reset();
+  toast(`“${fi}” eklendi.`);
+}
+
+function removeCustomWord(fi) {
+  if (!confirm(`“${fi}” kelimesi ve kartları silinsin mi?`)) return;
+  state.custom = (state.custom || []).filter((w) => w.fi !== fi);
+  store.pruneWordCards(state, fi);
+  persistCustomWords();
+  toast(`“${fi}” silindi.`);
 }
 
 /** Aynı kalıpta bu kadar hata birikince otomatik ek tekrar kartı üretilir (ayarlardan 1–6). */
@@ -97,6 +182,12 @@ function answerTarget(vocab, dir, source) {
     if (!answer) return null;
     return { kind, lang: "fi", text: answer, variants: [answer] };
   }
+  const person = conjOfDir(kind);
+  if (person) {
+    const answer = vocab.conj?.[person];
+    if (!answer) return null;
+    return { kind, lang: "fi", text: answer, variants: [answer] };
+  }
   if (kind === "cloze") {
     if (!vocab.cloze) return null;
     return { kind, lang: "fi", text: vocab.cloze.answer, variants: [vocab.cloze.answer] };
@@ -131,6 +222,8 @@ function syncExtraCards(now = Date.now()) {
     if (source === "cloze" && !vocab.cloze) continue;
     const caseKey = caseOfDir(source);
     if (caseKey && !vocab.forms?.[caseKey]) continue;
+    const person = conjOfDir(source);
+    if (person && !vocab.conj?.[person]) continue;
     const key = extraCardKey(vocab, source);
     const card = state.cards[key];
     const pending = info.pending || 0;
@@ -183,6 +276,18 @@ function activeJobs() {
       }
     });
   }
+  // Fiil çekimi kartları: her kişi ayrı kart, yön filtresinden bağımsız.
+  if (conjEnabled()) {
+    VOCAB.forEach((vocab, id) => {
+      if (!vocab.conj || !matchesLevel(id)) return;
+      for (const person of Object.keys(PERSONS)) {
+        const dir = conjDir(person);
+        const key = store.cardKey(vocab, dir);
+        const card = state.cards[key];
+        if (card) jobs.push({ id, dir, key, card, vocab, person });
+      }
+    });
+  }
   // Ek tekrar kartları: kaynak türü neyse o biçimde gelir, yön filtresinden bağımsızdır.
   const indexByFi = new Map(VOCAB.map((v, i) => [v.fi, i]));
   for (const [key, card] of Object.entries(state.cards)) {
@@ -193,6 +298,7 @@ function activeJobs() {
     if (source === "cloze" && !clozeEnabled()) continue;
     const caseKey = caseOfDir(source);
     if (caseKey && !formsEnabled()) continue;
+    if (conjOfDir(source) && !conjEnabled()) continue;
     jobs.push({ id, dir: "extra", key, card, vocab: VOCAB[id], source });
   }
   return jobs;
@@ -633,6 +739,8 @@ function renderStudy() {
   const isCloze = kind === "cloze";
   const caseKey = caseOfDir(kind);
   const caseMeta = caseKey ? CASES[caseKey] : null;
+  const personKey = conjOfDir(kind);
+  const personMeta = personKey ? PERSONS[personKey] : null;
   const typing = typingEnabledFor(current);
   const frontLang = isCloze || kind === "fi-tr" ? "fi" : "tr";
   const backLang = kind === "fi-tr" ? "tr" : "fi";
@@ -645,8 +753,11 @@ function renderStudy() {
   $("#fcCat").textContent = `${CATEGORIES[vocab.cat].icon} ${CATEGORIES[vocab.cat].label}`;
   $("#fcLevel").textContent = vocab.lvl;
   $("#fcLevel").title = LEVELS[vocab.lvl]?.label || vocab.lvl;
-  $("#fcState").textContent = isExtra ? "Ek tekrar" : caseMeta ? caseMeta.label : cardStatusLabel(card);
-  if (caseMeta) $("#fcState").title = caseMeta.hint;
+  $("#fcState").textContent = isExtra
+    ? "Ek tekrar"
+    : personMeta ? personMeta.label : caseMeta ? caseMeta.label : cardStatusLabel(card);
+  if (personMeta) $("#fcState").title = personMeta.hint;
+  else if (caseMeta) $("#fcState").title = caseMeta.hint;
   else $("#fcState").removeAttribute("title");
 
   const promptEl = $("#fcPrompt");
@@ -704,6 +815,21 @@ function renderStudy() {
     const caseHint = document.createElement("span");
     caseHint.textContent = ` — ${caseMeta.hint}`;
     ex.append(base, caseHint);
+  } else if (personMeta) {
+    // Fiil çekimi kartı: mastar + kişi sorulur, çekimli biçim istenir.
+    promptEl.classList.remove("cloze");
+    promptEl.textContent = vocab.tr;
+    promptEl.setAttribute("lang", "tr");
+    answerEl.textContent = vocab.conj?.[personKey] || "";
+    answerEl.setAttribute("lang", "fi");
+    const type = VERB_TYPES[vocab.conj?.type];
+    const inf = document.createElement("span");
+    inf.className = "fi";
+    inf.lang = "fi";
+    inf.textContent = vocab.fi;
+    const typeInfo = document.createElement("span");
+    typeInfo.textContent = ` — ${type ? `${type.label}: ${type.hint}` : "fiil"} · ${personMeta.suffix}`;
+    ex.append(inf, typeInfo);
   } else {
     promptEl.classList.remove("cloze");
     const promptText = frontLang === "fi" ? vocab.fi : vocab.tr;
@@ -784,7 +910,9 @@ function renderStudy() {
       ? "Eksik ifadeyi yaz…"
       : caseMeta
         ? "Hâl ekli biçimi yaz…"
-        : backLang === "tr" ? "Türkçe karşılığı…" : "Fince karşılığı…";
+        : personMeta
+          ? "Çekimli fiili yaz…"
+          : backLang === "tr" ? "Türkçe karşılığı…" : "Fince karşılığı…";
     if (clozeFocusKey !== current.key) {
       clozeFocusKey = current.key;
       requestAnimationFrame(() => $("#clozeInput")?.focus());
@@ -1015,7 +1143,23 @@ function renderDictionary() {
     play.setAttribute("aria-label", `${v.fi} telaffuzunu dinle`);
     play.textContent = "🔊";
     play.addEventListener("click", () => speak(v.fi, "fi-FI"));
-    side.append(lvlBadge, badge, play);
+    if (v.custom) {
+      const own = document.createElement("span");
+      own.className = "badge";
+      own.textContent = "özel";
+      own.title = "Kendi eklediğin kelime";
+      const del = document.createElement("button");
+      del.type = "button";
+      del.className = "icon-btn";
+      del.title = "Bu kelimeyi sil";
+      del.setAttribute("aria-label", `${v.fi} kelimesini sil`);
+      del.dataset.del = v.fi;
+      del.textContent = "🗑";
+      del.addEventListener("click", () => removeCustomWord(v.fi));
+      side.append(lvlBadge, own, badge, play, del);
+    } else {
+      side.append(lvlBadge, badge, play);
+    }
 
     const ex = document.createElement("p");
     ex.className = "word-ex";
@@ -1178,11 +1322,14 @@ function renderTypingStats() {
   watches.slice(0, 6).forEach(([entryKey, info]) => {
     const [fi, source] = entryKey.split("|");
     const caseKey = caseOfDir(source);
+    const personKey = conjOfDir(source);
     const sourceLabel = source === "cloze"
       ? "boşluk"
       : caseKey
         ? (CASES[caseKey]?.label || "hâl eki")
-        : source === "fi-tr" ? "F→T" : "T→F";
+        : personKey
+          ? (PERSONS[personKey]?.label || "fiil")
+          : source === "fi-tr" ? "F→T" : "T→F";
     const pending = info.pending || 0;
     const li = document.createElement("li");
     li.className = "error-item";
@@ -1236,6 +1383,7 @@ function renderSettings() {
   $("#autoSpeak").checked = Boolean(state.settings.autoSpeak);
   $("#clozeEnabled").checked = clozeEnabled();
   $("#formsEnabled").checked = formsEnabled();
+  $("#conjEnabled").checked = conjEnabled();
   $("#typingWordsEnabled").checked = typingSettingOn("words");
   $("#typingClozeEnabled").checked = typingSettingOn("cloze");
   $("#typingClozeEnabled").disabled = !clozeEnabled();
@@ -1298,7 +1446,7 @@ function bindEvents() {
     const card = state.cards[current.key];
     const kind = current.dir === "extra" ? (card?.source || "cloze") : current.dir;
     if (kind === "cloze") { speak(v.ex[0], "fi-FI"); return; }
-    if (caseOfDir(kind)) { speak(v.tr, "tr-TR"); return; }
+    if (caseOfDir(kind) || conjOfDir(kind)) { speak(v.tr, "tr-TR"); return; }
     const lang = current.dir === "fi-tr" ? "fi-FI" : "tr-TR";
     speak(current.dir === "fi-tr" ? v.fi : v.tr, lang);
   });
@@ -1309,7 +1457,7 @@ function bindEvents() {
     const card = state.cards[current.key];
     const kind = current.dir === "extra" ? (card?.source || "cloze") : current.dir;
     if (kind === "cloze") { speak(v.fi, "fi-FI"); return; }
-    if (caseOfDir(kind)) { speak(answerTarget(v, current.dir, card?.source)?.text || v.fi, "fi-FI"); return; }
+    if (caseOfDir(kind) || conjOfDir(kind)) { speak(answerTarget(v, current.dir, card?.source)?.text || v.fi, "fi-FI"); return; }
     const lang = current.dir === "fi-tr" ? "tr-TR" : "fi-FI";
     speak(current.dir === "fi-tr" ? v.tr : v.fi, lang);
   });
@@ -1320,6 +1468,11 @@ function bindEvents() {
     current = null;
     renderStudy();
     toast("Bugün için 10 kart daha eklendi.");
+  });
+
+  $("#addWordForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    addCustomWord();
   });
 
   $("#dictSearch").addEventListener("input", renderDictionary);
@@ -1381,6 +1534,14 @@ function bindEvents() {
     toast(e.target.checked ? "Hâl eki kartları açıldı." : "Hâl eki kartları kapatıldı.");
   });
 
+  $("#conjEnabled").addEventListener("change", (e) => {
+    state.settings.conj = e.target.checked;
+    current = null;
+    revealed = false;
+    settingsChanged();
+    toast(e.target.checked ? "Fiil çekimi kartları açıldı." : "Fiil çekimi kartları kapatıldı.");
+  });
+
   $("#typingWordsEnabled").addEventListener("change", (e) => {
     state.settings.typingWords = e.target.checked;
     current = null;
@@ -1422,6 +1583,7 @@ function bindEvents() {
       const imported = store.importBackup(text);
       if (!confirm("İçe aktarılan yedek mevcut ilerlemenin üzerine yazılacak. Devam edilsin mi?")) return;
       Object.assign(state, imported);
+      applyCustomWords();
       store.ensureCards(state);
       migrateTypingState();
       syncExtraCards();
@@ -1485,6 +1647,10 @@ function init() {
   applyTheme();
   $("#storageName").textContent = store.STORAGE_KEY;
 
+  // Yedekten ya da önceki oturumdan gelen kullanıcı kelimelerini sözlüğe ekle.
+  applyCustomWords();
+  store.ensureCards(state);
+
   const missingLevel = VOCAB.filter((v) => !LEVELS[v.lvl]);
   if (missingLevel.length) {
     console.warn("Seviyesi tanımsız kelimeler:", missingLevel.map((v) => v.fi));
@@ -1500,6 +1666,14 @@ function init() {
     opt.value = key;
     opt.textContent = `${meta.icon} ${meta.label}`;
     catSelect.append(opt);
+  });
+
+  const wordCatSelect = $("#newWordCat");
+  Object.entries(CATEGORIES).forEach(([key, meta]) => {
+    const opt = document.createElement("option");
+    opt.value = key;
+    opt.textContent = `${meta.icon} ${meta.label}`;
+    wordCatSelect.append(opt);
   });
 
   $("#footWords").textContent = VOCAB.length;

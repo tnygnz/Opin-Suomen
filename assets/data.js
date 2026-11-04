@@ -782,6 +782,69 @@ for (const v of VOCAB) {
   if (FORMS[v.fi]) v.forms = FORMS[v.fi];
 }
 
+/* ── Fiil çekimi: preesens (şimdiki/geniş zaman), altı kişi ────────────────
+   Yalnızca sözlükteki fiiller için, elle doğrulanmış tek zaman çekimi.
+   Kart yönü `conj:<kişi>`; her kişi ayrı ilerleme tutar. */
+
+export const PERSONS = {
+  mina: { label: "minä (ben)", tr: "ben", suffix: "-n", hint: "1. tekil: gövde + -n" },
+  sina: { label: "sinä (sen)", tr: "sen", suffix: "-t", hint: "2. tekil: gövde + -t" },
+  han: { label: "hän (o)", tr: "o", suffix: "-V", hint: "3. tekil: gövdenin son ünlüsü uzar (puhu- → puhuu)" },
+  me: { label: "me (biz)", tr: "biz", suffix: "-mme", hint: "1. çoğul: gövde + -mme" },
+  te: { label: "te (siz)", tr: "siz", suffix: "-tte", hint: "2. çoğul: gövde + -tte" },
+  he: { label: "he (onlar)", tr: "onlar", suffix: "-vat / -vät", hint: "3. çoğul: gövde + -vat/-vät (ünlü uyumu)" },
+};
+
+// Fince temel fiil tipleri; kart cevabında kısa hatırlatma olarak gösterilir.
+export const VERB_TYPES = {
+  1: { label: "Tip 1", hint: "sonsuz -a/-ä, gövde son ünlüyü düşürür (puhua → puhu-)" },
+  2: { label: "Tip 2", hint: "sonsuz -da/-dä, gövde -da'yı düşürür (juoda → juo-)" },
+  3: { label: "Tip 3", hint: "sonsuz -la/-na/-ra/-sta, gövde -e alır (tulla → tule-)" },
+  4: { label: "Tip 4", hint: "sonsuz -ta/-tä, gövdeye -a/-ä eklenir (haluta → halua-)" },
+  5: { label: "Tip 5", hint: "sonsuz -ita/-itä, gövde -itse olur (tarvita → tarvitse-)" },
+};
+
+export const CONJ_PREFIX = "conj:";
+
+/** `conj:<kişi>` yönünden kişi anahtarını çıkarır; hâl eki ya da normal yönde null. */
+export function conjOfDir(dir) {
+  if (typeof dir !== "string" || !dir.startsWith(CONJ_PREFIX)) return null;
+  const person = dir.slice(CONJ_PREFIX.length);
+  return PERSONS[person] ? person : null;
+}
+
+export function conjDir(person) {
+  return `${CONJ_PREFIX}${person}`;
+}
+
+// preesens: minä / sinä / hän / me / te / he
+export const CONJ = {
+  puhua: { type: 1, mina: "puhun", sina: "puhut", han: "puhuu", me: "puhumme", te: "puhutte", he: "puhuvat" },
+  ostaa: { type: 1, mina: "ostan", sina: "ostat", han: "ostaa", me: "ostamme", te: "ostatte", he: "ostavat" },
+  asua: { type: 1, mina: "asun", sina: "asut", han: "asuu", me: "asumme", te: "asutte", he: "asuvat" },
+  lukea: { type: 1, mina: "luen", sina: "luet", han: "lukee", me: "luemme", te: "luette", he: "lukevat" },
+  katsoa: { type: 1, mina: "katson", sina: "katsot", han: "katsoo", me: "katsomme", te: "katsotte", he: "katsovat" },
+  oppia: { type: 1, mina: "opin", sina: "opit", han: "oppii", me: "opimme", te: "opitte", he: "oppivat" },
+  ymmärtää: { type: 1, mina: "ymmärrän", sina: "ymmärrät", han: "ymmärtää", me: "ymmärrämme", te: "ymmärrätte", he: "ymmärtävät" },
+  auttaa: { type: 1, mina: "autan", sina: "autat", han: "auttaa", me: "autamme", te: "autatte", he: "auttavat" },
+  juoda: { type: 2, mina: "juon", sina: "juot", han: "juo", me: "juomme", te: "juotte", he: "juovat" },
+  syödä: { type: 2, mina: "syön", sina: "syöt", han: "syö", me: "syömme", te: "syötte", he: "syövät" },
+  uida: { type: 2, mina: "uin", sina: "uit", han: "ui", me: "uimme", te: "uitte", he: "uivat" },
+  tehdä: { type: 2, mina: "teen", sina: "teet", han: "tekee", me: "teemme", te: "teette", he: "tekevät" },
+  voida: { type: 2, mina: "voin", sina: "voit", han: "voi", me: "voimme", te: "voitte", he: "voivat" },
+  olla: { type: 3, mina: "olen", sina: "olet", han: "on", me: "olemme", te: "olette", he: "ovat" },
+  mennä: { type: 3, mina: "menen", sina: "menet", han: "menee", me: "menemme", te: "menette", he: "menevät" },
+  tulla: { type: 3, mina: "tulen", sina: "tulet", han: "tulee", me: "tulemme", te: "tulette", he: "tulevat" },
+  kuunnella: { type: 3, mina: "kuuntelen", sina: "kuuntelet", han: "kuuntelee", me: "kuuntelemme", te: "kuuntelette", he: "kuuntelevat" },
+  nousta: { type: 3, mina: "nousen", sina: "nouset", han: "nousee", me: "nousemme", te: "nousette", he: "nousevat" },
+  haluta: { type: 4, mina: "haluan", sina: "haluat", han: "haluaa", me: "haluamme", te: "haluatte", he: "haluavat" },
+  tarvita: { type: 5, mina: "tarvitsen", sina: "tarvitset", han: "tarvitsee", me: "tarvitsemme", te: "tarvitsette", he: "tarvitsevat" },
+};
+
+for (const v of VOCAB) {
+  if (CONJ[v.fi]) v.conj = CONJ[v.fi];
+}
+
 export const DIRS = {
   "fi-tr": { label: "Fince → Türkçe", front: "fi", back: "tr", lang: "fi-FI" },
   "tr-fi": { label: "Türkçe → Fince", front: "tr", back: "fi", lang: "tr-TR" },

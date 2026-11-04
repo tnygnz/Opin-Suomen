@@ -11,7 +11,7 @@ const indexPath = path.join(root, "index.html");
 const assetUrl = (name) => pathToFileURL(path.join(root, "assets", name)).href;
 
 const store = await import(assetUrl("store.js"));
-const { VOCAB, CASES, FORMS } = await import(assetUrl("data.js"));
+const { VOCAB, CASES, FORMS, PERSONS, VERB_TYPES, CONJ } = await import(assetUrl("data.js"));
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -425,6 +425,120 @@ async function testFormCard() {
   await close(offDom);
 }
 
+/* ── 11. Fiil çekimi verisi ve kart üretimi ──────────────────── */
+function testConjData() {
+  console.log("\n11) Fiil çekimi verisi: kişiler, fiil tipleri ve kart üretimi");
+  const byFi = new Map(VOCAB.map((v) => [v.fi, v]));
+  const keys = Object.keys(CONJ);
+
+  const unknown = keys.filter((k) => !byFi.has(k));
+  check("her fiil sözlükte var", unknown.length === 0, unknown.join(", "));
+
+  const missing = [], same = [], badType = [];
+  for (const [fi, forms] of Object.entries(CONJ)) {
+    if (!VERB_TYPES[forms.type]) badType.push(fi);
+    for (const person of Object.keys(PERSONS)) if (!forms[person]) missing.push(`${fi}.${person}`);
+    // 1. tekil her zaman -n alır; uzun ünlülü tip 1 fiillerde hän biçimi mastarla aynı olabilir (ostaa).
+    if (forms.mina === fi) same.push(`${fi}.mina`);
+    const vals = Object.keys(PERSONS).map((p) => forms[p]);
+    if (new Set(vals).size !== vals.length) same.push(`${fi} (aynı biçim)`);
+  }
+  check("altı kişinin hepsi tanımlı", missing.length === 0, missing.join(", "));
+  check("tipler 1–5 arasında", badType.length === 0, badType.join(", "));
+  check("1. tekil mastardan farklı, kişiler birbirinden ayrı", same.length === 0, same.join(", "));
+  check(
+    "düzensiz ve gövde değiştiren çekimler doğru",
+    CONJ.olla.han === "on" && CONJ.tehdä.han === "tekee" && CONJ.juoda.han === "juo" && CONJ.tarvita.mina === "tarvitsen",
+    [CONJ.olla.han, CONJ.tehdä.han, CONJ.juoda.han, CONJ.tarvita.mina].join(", "),
+  );
+  check("en az 15 fiil kapsanıyor", keys.length >= 15, `${keys.length} fiil`);
+  const types = new Set(Object.values(CONJ).map((c) => c.type));
+  check("beş temel fiil tipi de temsil ediliyor", [1, 2, 3, 4, 5].every((t) => types.has(t)), [...types].join(","));
+
+  const unattached = keys.filter((k) => !byFi.get(k)?.conj);
+  check("çekimler sözlük kayıtlarına iliştirildi", unattached.length === 0, unattached.join(", "));
+
+  const state = store.defaultState();
+  store.ensureCards(state);
+  check("fiil kartı oluşturuldu", Boolean(state.cards["puhua|conj:mina"]));
+  check("kart yönü conj:<kişi>", state.cards["puhua|conj:mina"]?.dir === "conj:mina");
+  const created = Object.keys(state.cards).filter((k) => k.includes("|conj:")).length;
+  check("kart sayısı = fiil × 6", created === keys.length * 6, `${created} kart / ${keys.length} fiil`);
+}
+
+/* ── 12. Fiil çekimi kartı: kişi, yazma ve kapatma ────────────── */
+async function testConjCard() {
+  console.log("\n12) Fiil çekimi kartı: kişi sorusu, yazma ve kapatma");
+  const { vocab } = vocabByFi("puhua");
+  const dom = await boot(seed({ newCard: { fi: "puhua", dir: "conj:mina" } }));
+  const w = dom.window;
+
+  check("soru mastarı gösteriyor", $(w, "#fcPrompt").textContent.trim() === vocab.tr, $(w, "#fcPrompt").textContent);
+  check("çip kişiyi gösteriyor", $(w, "#fcState").textContent.trim() === PERSONS.mina.label, $(w, "#fcState").textContent);
+  check("yazma alanı açık", $(w, "#clozeForm").hidden === false);
+  check(
+    "alan çekimli fiili istiyor",
+    $(w, "#clozeInput").placeholder.includes("Çekimli"),
+    $(w, "#clozeInput").placeholder,
+  );
+
+  submitAnswer(w, "puhun");
+  check("doğru çekim kabul edildi", $(w, "#clozeFeedback").classList.contains("ok"), $(w, "#clozeFeedback").textContent);
+  check("cevap çekimli biçimi gösteriyor", $(w, "#fcAnswerText").textContent.trim() === "puhun");
+  check("örnek satırı fiil tipini gösteriyor", $(w, "#fcExample").textContent.includes("Tip 1"), $(w, "#fcExample").textContent);
+
+  grade(w, "easy");
+  const saved = await savedState(w);
+  const card = saved.cards["puhua|conj:mina"];
+  check("fiil kartı SRS'e girdi", card?.state === "review" && card.interval >= 4, JSON.stringify(card));
+  await close(dom);
+
+  const offDom = await boot(seed({ newCard: { fi: "puhua", dir: "conj:mina" }, settings: { conj: false } }));
+  const ow = offDom.window;
+  check("ayar kapalıyken fiil kartı sorulmuyor", $(ow, "#fcEmpty").hidden === false);
+  check("ayar kutusu kapalı görünüyor", $(ow, "#conjEnabled").checked === false);
+  await close(offDom);
+}
+
+/* ── 13. Kendi kelimelerini ekleme ve silme ─────────────────── */
+async function testCustomWords() {
+  console.log("\n13) Kendi kelimeni ekle: kart üretimi, yinelenen, silme");
+  const dom = await boot(seed());
+  const w = dom.window;
+  const add = (fi, tr, lvl = "A2", cat = "kultur") => {
+    $(w, "#newWordFi").value = fi;
+    $(w, "#newWordTr").value = tr;
+    $(w, "#newWordLvl").value = lvl;
+    $(w, "#newWordCat").value = cat;
+    $(w, "#addWordForm").dispatchEvent(new w.Event("submit", { cancelable: true, bubbles: true }));
+  };
+
+  // Yerleşik sözlükte olan bir kelime eklenmemeli (sauna zaten var).
+  add("sauna", "sauna");
+  const builtinDup = JSON.parse(w.localStorage.getItem(store.STORAGE_KEY) || "{}");
+  check("sözlükte olan kelime yeniden eklenmiyor", (builtinDup.custom || []).length === 0);
+
+  add("viini", "şarap");
+  const saved = JSON.parse(w.localStorage.getItem(store.STORAGE_KEY));
+  check("kelime duruma yazıldı", saved.custom?.length === 1 && saved.custom[0].fi === "viini", JSON.stringify(saved.custom));
+  check("seviye ve kategori korundu", saved.custom[0].lvl === "A2" && saved.custom[0].cat === "kultur");
+  check("iki yönlü kart oluştu", Boolean(saved.cards["viini|fi-tr"] && saved.cards["viini|tr-fi"]));
+  check("kelime sözlük dizisine eklendi", VOCAB.some((v) => v.fi === "viini"));
+  check("sözlük listesinde görünüyor", $(w, "#wordList").textContent.includes("viini"), $(w, "#dictCount").textContent);
+
+  add("viini", "farklı anlam");
+  const dup = JSON.parse(w.localStorage.getItem(store.STORAGE_KEY));
+  check("aynı Fince kelime ikinci kez eklenmiyor", dup.custom.length === 1, `${dup.custom.length} kayıt`);
+
+  $(w, "#wordList button[data-del='viini']").click();
+  const after = JSON.parse(w.localStorage.getItem(store.STORAGE_KEY));
+  check("kelime silindi", after.custom.length === 0);
+  check("kartları da temizlendi", !after.cards["viini|fi-tr"] && !after.cards["viini|tr-fi"]);
+  check("sözlükten kalktı", !VOCAB.some((v) => v.fi === "viini"));
+  check("liste yeniden çizildi", !$(w, "#wordList").textContent.includes("viini"));
+  await close(dom);
+}
+
 const tests = [
   testAlternativeTranslation,
   testExtraRepeatCard,
@@ -436,6 +550,9 @@ const tests = [
   testBackupImport,
   testFormData,
   testFormCard,
+  testConjData,
+  testConjCard,
+  testCustomWords,
 ];
 
 for (const test of tests) {
