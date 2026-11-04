@@ -253,6 +253,8 @@ kbd {
   flex: 1;
   min-height: 120px;
 }
+/* Yazma alanı açıkken başlık esnemez; giriş alanı kelimeye yaklaşır. */
+.flashcard.is-typing .fc-prompt { flex: 0 0 auto; min-height: 96px; }
 .prompt-text {
   margin: 0;
   font-size: clamp(30px, 5.4vw, 46px);
@@ -449,6 +451,9 @@ kbd {
 .btn.primary { background: var(--brand); color: #fff; box-shadow: 0 8px 20px -10px var(--brand); }
 .btn.primary:hover { filter: brightness(1.07); }
 .btn.primary kbd { background: rgba(255,255,255,.18); border-color: rgba(255,255,255,.3); color: #fff; }
+/* Karanlık temada açık mavi üzerine beyaz yazı okunmuyordu; daha koyu bir mavi kullanılır. */
+html[data-theme="dark"] .btn.primary { background: #2a6fbb; box-shadow: 0 8px 20px -10px #2a6fbb; }
+html[data-theme="dark"] .brand-mark { background: linear-gradient(145deg, #2a6fbb, #0a3d78); }
 .btn.ghost { background: var(--panel); border-color: var(--line); color: var(--ink); }
 .btn.ghost:hover { background: var(--panel-2); }
 .btn.danger { background: transparent; border-color: color-mix(in srgb, var(--red) 40%, var(--line)); color: var(--red); }
@@ -774,6 +779,13 @@ input[type="checkbox"] { width: 17px; height: 17px; accent-color: var(--brand); 
   .ref-table dt { font-size: 11.5px; }
   .flashcard { padding: 20px 18px 24px; min-height: 240px; border-radius: 20px; }
   .stat-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* Dar telefonlarda dört sekme de kesilmeden sığsın */
+@media (max-width: 430px) {
+  .tabs { gap: 2px; }
+  .tab { padding: 9px 8px; font-size: 13px; justify-content: center; gap: 0; }
+  .tab span[aria-hidden] { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {

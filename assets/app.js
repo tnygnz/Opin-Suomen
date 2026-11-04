@@ -568,7 +568,7 @@ function renderCounters() {
   $("#cntNew").textContent = newLeft;
   $("#cntLearn").textContent = learnLeft;
   $("#cntDue").textContent = reviewLeft;
-  $("#deckPill").textContent = `Bugün ${state.daily.total} kart`;
+  $("#deckPill").textContent = `Bugün ${state.daily.total} cevap`;
 
   const total = sessionAnswered + newLeft + learnLeft + reviewLeft;
   const pct = total > 0 ? Math.round((sessionAnswered / total) * 100) : 0;
@@ -610,6 +610,8 @@ function renderStudy() {
 
   emptyEl.hidden = true;
   cardEl.hidden = false;
+  // Yazma alanı görünürken başlık ile giriş alanı arasındaki aşırı boşluk kapatılır.
+  cardEl.classList.toggle("is-typing", typing && !revealed);
 
   $("#fcCat").textContent = `${CATEGORIES[vocab.cat].icon} ${CATEGORIES[vocab.cat].label}`;
   $("#fcLevel").textContent = vocab.lvl;
@@ -751,6 +753,14 @@ function renderStudy() {
   $("#fcAnswer").hidden = !revealed;
   gradeRow.hidden = !revealed;
   revealRow.hidden = revealed || typing;
+
+  // Yazma modunda Space cevabı açmaz, giriş alanına odaklanır; ipucu buna göre değişir.
+  const footHint = $("#footHint");
+  if (footHint) {
+    footHint.innerHTML = typing && !revealed
+      ? 'Klavye: <kbd>Enter</kbd> kontrol et · <kbd>1</kbd>–<kbd>4</kbd> not ver'
+      : 'Klavye: <kbd>Space</kbd> göster · <kbd>1</kbd>–<kbd>4</kbd> not ver';
+  }
 
   if (revealed) {
     if (isExtra) {
