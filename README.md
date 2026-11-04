@@ -64,6 +64,8 @@ kapalıyken gramer kartları sıraya girmemelidir.
 - **Sistematik hata raporu:** İstatistik sekmesi, zaten biriken veriyi desenlere göre toplar: hangi hâl eki, fiil kişisi
   ya da kelime kategorisinde daha çok unutuyorsun, en çok takıldığın kelimeler hangileri ve yazmada hangi harfler
   sürekli eksik/fazla yazılıyor. Yeni bir sayaç tutulmaz; rapor mevcut kart ilerlemesi ve yazma kayıtlarından türetilir.
+  Desen ya da kategori satırına dokunmak yalnız o kartları çalıştıran bir odak kurar; çalışma ekranındaki
+  odak etiketiyle kaldırılır ve oturum bitince kendiliğinden kaybolur.
 - **Yazma modu:** Kelime ve boşluk kartlarında cevap klavyeyle yazılır ve toleranslı karşılaştırılır:
   büyük/küçük harf, noktalama ve ä/ö/å ayrımı yok sayılır, 5+ harfli cevaplarda tek harflik yazım hatası kabul edilir.
   Kelime kartlarında `/` ile ayrılmış alternatif çevirilerden herhangi biri kabul edilir (ör. `erkek` ya da

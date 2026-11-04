@@ -17,6 +17,7 @@ let lastAutoSpoken = null;
 let speaking = "speechSynthesis" in window;
 let clozeChecked = null;     // { ok, given, skipped } — yazma modu sonucu
 let clozeFocusKey = null;    // odaklanılan kart anahtarı
+let focusFilter = null;      // rapordan kurulan oturum odağı: { kind, key, label }
 
 /* ── Yardımcılar ─────────────────────────────────── */
 function dirsActive() {
@@ -301,7 +302,50 @@ function activeJobs() {
     if (conjOfDir(source) && !conjEnabled()) continue;
     jobs.push({ id, dir: "extra", key, card, vocab: VOCAB[id], source });
   }
-  return jobs;
+  return focusFilter ? jobs.filter(focusMatches) : jobs;
+}
+
+/** Ek tekrar kartının kaynak yönü (odak eşleşmesi için). */
+function jobPatternDir(job) {
+  return job.dir === "extra" ? state.cards[job.key]?.source || "cloze" : job.dir;
+}
+
+/** Rapordan kurulan odak: desen (hâl eki/fiil/yön) ya da kategori. */
+function focusMatches(job) {
+  if (!focusFilter) return true;
+  if (focusFilter.kind === "cat") return job.vocab.cat === focusFilter.key;
+  return reportPattern(jobPatternDir(job)).key === focusFilter.key;
+}
+
+function setFocus(next) {
+  focusFilter = next;
+  current = null;
+  revealed = false;
+  clozeChecked = null;
+  undoSnapshot = null;
+  switchView("study");
+  renderStats();
+  toast(`Odak: ${next.label}`);
+}
+
+function clearFocus() {
+  if (!focusFilter) return;
+  focusFilter = null;
+  current = null;
+  revealed = false;
+  clozeChecked = null;
+  undoSnapshot = null;
+  renderStudy();
+  renderStats();
+}
+
+/** Çalışma ekranındaki odak etiketini günceller. */
+function syncFocusUi() {
+  const pill = $("#focusPill");
+  if (!pill) return;
+  pill.hidden = !focusFilter;
+  pill.textContent = focusFilter ? `Odak: ${focusFilter.label} · kaldır` : "";
+  pill.title = focusFilter ? "Bu odaktan çıkıp tüm destelere dön" : "";
 }
 
 /** Yeni kartlarda her üç karttan birini boşluk doldurma yapar.
@@ -716,6 +760,7 @@ function renderStudy() {
   renderCounters();
   $("#dirPill").textContent = dirLabel();
   syncLevelSeg();
+  syncFocusUi();
 
   const cardEl = $("#flashcard");
   const emptyEl = $("#fcEmpty");
@@ -966,6 +1011,13 @@ function showEmpty() {
   const title = $("#emptyTitle");
   const text = $("#emptyText");
 
+  if (focusFilter) {
+    emptyEmoji.textContent = "🎯";
+    title.textContent = "Odakta kart kalmadı";
+    text.textContent = `“${focusFilter.label}” için şu an sırada kart yok. Üstteki etikete dokunarak tüm destelere dönebilirsin.`;
+    return;
+  }
+
   const allCards = activeJobs().map((j) => j.card);
   const pendingFuture = allCards
     .filter((c) => c.state !== "new")
@@ -1202,9 +1254,10 @@ function renderStats() {
   const learned = cards.filter((c) => c.state !== "new").length;
   const mature = cards.filter(isMature).length;
   const { total: remaining } = remainingCounts(now);
-  $("#statsScope").textContent = levelFilter() === "all"
+  const scopeText = levelFilter() === "all"
     ? "Kapsam: tüm seviyeler"
     : `Kapsam: ${LEVELS[levelFilter()]?.label || levelFilter()}`;
+  $("#statsScope").textContent = focusFilter ? `${scopeText} · Odak: ${focusFilter.label}` : scopeText;
 
   const accuracy = (correct, total) => (total ? `doğruluk %${Math.round((correct / total) * 100)}` : "doğruluk —");
 
@@ -1377,6 +1430,22 @@ function renderTypingStats() {
   });
 }
 
+/** Rapor satırını "bu kartları çalış" kısayoluna çevirir. */
+function makeFocusRow(row, activate) {
+  row.classList.add("is-clickable");
+  row.tabIndex = 0;
+  row.setAttribute("role", "button");
+  row.title = "Bu kartları çalış";
+  const run = () => activate();
+  row.addEventListener("click", run);
+  row.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      run();
+    }
+  });
+}
+
 /* ── Sistematik hata raporu ────────────────────────
    Yeni sayaç tutmaz: kartlardaki unutma/tekrar sayıları ile yazma hatalarından
    desen çıkarır (hâl eki, fiil kişisi, yön, harf). */
@@ -1477,6 +1546,7 @@ function renderMistakeReport() {
     num.className = "cat-num";
     num.textContent = `${r.lapses} / ${r.cards}`;
     row.append(name, bar, num);
+    makeFocusRow(row, () => setFocus({ kind: "pattern", key: r.key, label: r.label }));
     patterns.append(row);
   });
   $("#reportPatternLabel").hidden = ranked.length === 0;
@@ -1517,6 +1587,7 @@ function renderMistakeReport() {
     num.className = "cat-num";
     num.textContent = `${c.lapses} / ${c.words.size} kelime`;
     row.append(name, bar, num);
+    makeFocusRow(row, () => setFocus({ kind: "cat", key: c.cat, label: `${meta.icon} ${meta.label}` }));
     catWrap.append(row);
   });
 
@@ -1638,6 +1709,8 @@ function bindEvents() {
     applyTheme();
     store.saveState(state);
   });
+
+  $("#focusPill").addEventListener("click", clearFocus);
 
   $("#revealBtn").addEventListener("click", reveal);
 

@@ -647,6 +647,43 @@ async function testMistakeReport() {
   await close(fresh);
 }
 
+/* ── 15. Rapordan odaklı çalışma ────────────────── */
+async function testFocusFromReport() {
+  console.log("\n15) Rapordan odaklı çalışma: desen ve kategori kısayolu");
+  const formFi = Object.keys(FORMS)[0];
+  const caseKey = Object.keys(CASES)[0];
+  const dir = `form:${caseKey}`;
+  const st = seed({ newCard: { fi: formFi, dir } });
+  st.cards[`${formFi}|${dir}`].lapses = 3;
+
+  const dom = await boot(st);
+  const w = dom.window;
+  $(w, '.tab[data-view="stats"]').click();
+
+  const rows = [...$(w, "#reportPatterns").querySelectorAll(".cat-row")];
+  const caseRow = rows.find((row) => row.textContent.includes(CASES[caseKey].label));
+  check("desen satırı tıklanabilir", Boolean(caseRow) && caseRow.classList.contains("is-clickable"), caseRow?.className);
+  caseRow.click();
+
+  check("çalışma görünümüne geçildi", $(w, "#view-study").hidden === false && $(w, "#view-stats").hidden === true);
+  check("odak etiketi deseni gösteriyor", $(w, "#focusPill").textContent.includes(CASES[caseKey].label), $(w, "#focusPill").textContent);
+  check("odaktaki kart soruluyor", $(w, "#fcState").textContent === CASES[caseKey].label, $(w, "#fcState").textContent);
+  check("odak sayacı yalnız odak kartını sayıyor", $(w, "#cntNew").textContent === "1", $(w, "#cntNew").textContent);
+
+  $(w, "#focusPill").click();
+  check("etiketle odak kaldırılıyor", $(w, "#focusPill").hidden === true, $(w, "#focusPill").textContent);
+  check("odak kalkınca normal boş duruma dönüldü", $(w, "#emptyTitle").textContent !== "Odakta kart kalmadı", $(w, "#emptyTitle").textContent);
+
+  $(w, '.tab[data-view="stats"]').click();
+  const catRow = $(w, "#reportCats .cat-row");
+  const catLabel = catRow.querySelector(".cat-name").textContent.trim();
+  catRow.click();
+  check("kategori satırı odak kuruyor", $(w, "#focusPill").textContent.includes(catLabel), $(w, "#focusPill").textContent);
+  check("kategori odağında çalışma açık", $(w, "#view-study").hidden === false);
+  check("istatistik kapsamı odağı gösteriyor", $(w, "#statsScope").textContent.includes("Odak:"), $(w, "#statsScope").textContent);
+  await close(dom);
+}
+
 const tests = [
   testAlternativeTranslation,
   testExtraRepeatCard,
@@ -662,6 +699,7 @@ const tests = [
   testConjCard,
   testCustomWords,
   testMistakeReport,
+  testFocusFromReport,
 ];
 
 for (const test of tests) {
