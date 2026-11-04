@@ -554,6 +554,8 @@ async function testCustomWords() {
 
   $(w, "#dictCat").value = "yemek";
   $(w, "#dictCat").dispatchEvent(new w.Event("change", { bubbles: true }));
+  $(w, "#dictSearch").value = "vii";
+  $(w, "#dictSearch").dispatchEvent(new w.Event("input", { bubbles: true }));
   await wait(260);
   const persisted = JSON.parse(w.localStorage.getItem(store.STORAGE_KEY));
   check(
@@ -561,13 +563,55 @@ async function testCustomWords() {
     persisted.ui?.dictScope === "custom" && persisted.ui?.dictCat === "yemek",
     JSON.stringify(persisted.ui)
   );
+  check("arama metni kaydedildi", persisted.ui?.dictSearch === "vii", JSON.stringify(persisted.ui?.dictSearch));
   await close(dom);
 
   const again = await boot(persisted);
   const w2 = again.window;
   check("yeniden açılışta kategori seçili", $(w2, "#dictCat").value === "yemek", $(w2, "#dictCat").value);
   check("yeniden açılışta kapsam seçili", $(w2, "#dictScope").value === "custom", $(w2, "#dictScope").value);
-  await close(again);
+  check("yeniden açılışta arama metni korundu", $(w2, "#dictSearch").value === "vii", $(w2, "#dictSearch").value);
+}
+
+/* ── 14. Sistematik hata raporu ─────────────────── */
+async function testMistakeReport() {
+  console.log("\n14) Sistematik hata raporu: desen, kelime ve harf özeti");
+  const st = seed();
+  const formFi = Object.keys(FORMS)[0];
+  const conjFi = Object.keys(CONJ)[0];
+  const person = Object.keys(PERSONS)[0];
+  const caseKey = Object.keys(CASES)[2]; // illatiivi
+  const word = VOCAB[0];
+
+  Object.assign(st.cards[`${formFi}|form:${caseKey}`], { lapses: 4, reps: 9 });
+  Object.assign(st.cards[`${conjFi}|conj:${person}`], { lapses: 2, reps: 6 });
+  Object.assign(st.cards[`${word.fi}|fi-tr`], { lapses: 7, reps: 12 });
+  st.typing.recent = [{ fi: word.fi, given: "aiti", answer: "äiti", type: "letter", at: Date.now() }];
+
+  const dom = await boot(st);
+  const w = dom.window;
+  $(w, '.tab[data-view="stats"]').click();
+
+  check("özet tekrar ve unutma sayısını veriyor", $(w, "#reportSummary").textContent.includes("13 unutma"), $(w, "#reportSummary").textContent);
+  check("en zayıf desen ipucu", $(w, "#reportHint").textContent.includes("En zayıf desen: Fince → Türkçe"), $(w, "#reportHint").textContent);
+  const patternsText = $(w, "#reportPatterns").textContent;
+  check("hâl eki deseni listede", patternsText.includes(CASES[caseKey].label), patternsText);
+  check("fiil kişisi deseni listede", patternsText.includes(PERSONS[person].label), patternsText);
+  check("desen satırı kart sayısını gösteriyor", patternsText.includes("4 / "), patternsText);
+
+  const wordsText = $(w, "#reportWords").textContent;
+  check("en çok unutulan kelime ve çevirisi", wordsText.includes(word.fi) && wordsText.includes(word.tr), wordsText);
+  check("kelimenin deseni gösteriliyor", wordsText.includes("Fince → Türkçe"), wordsText);
+  check("harf deseni çıkarıldı", $(w, "#reportLetters").textContent.includes("ä"), $(w, "#reportLetters").textContent);
+  await close(dom);
+
+  const fresh = await boot(seed());
+  const w2 = fresh.window;
+  $(w2, '.tab[data-view="stats"]').click();
+  check("veri yokken rapor ipucu gösteriyor", $(w2, "#reportHint").textContent.includes("Rapor çalıştıkça"), $(w2, "#reportHint").textContent);
+  check("boş durumda kelime listesi gizli", $(w2, "#reportWords").hidden === true);
+  check("boş durumda desen satırı yok", $(w2, "#reportPatterns").textContent === "");
+  await close(fresh);
 }
 
 const tests = [
@@ -584,6 +628,7 @@ const tests = [
   testConjData,
   testConjCard,
   testCustomWords,
+  testMistakeReport,
 ];
 
 for (const test of tests) {

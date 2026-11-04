@@ -34,7 +34,8 @@ toleranslı eşleşmeyi ve geri bildirimi, son cevabın geri alınmasını ve ye
 kart/sayaç biçimlerinin taşınmasını kontrol eder. Son beş senaryo gramer katmanını ve kendi kelimeleri doğrular:
 hâl eki tablosunun bütünlüğü (her kelimede üç durum, sözlükte karşılığı olan anahtarlar, kelime × 3 kart), hâl eki
 kartının soru/cevap/yazma akışı, fiil çekimi tablosu (altı kişi, tipler 1–5, fiil × 6 kart, düzensiz çekimler),
-fiil kartının kişi sorusu ve kendi kelime ekleme (iki yönlü kart, yinelenen kelime engeli, silme) — ayar
+fiil kartının kişi sorusu, kendi kelime ekleme (iki yönlü kart, yinelenen kelime engeli, silme, filtre kalıcılığı)
+ve sistematik hata raporu (desen sıralaması, en çok unutulan kelime, eksik harf deseni, boş durum) — ayar
 kapalıyken gramer kartları sıraya girmemelidir.
 
 ## Özellikler
@@ -58,7 +59,11 @@ kapalıyken gramer kartları sıraya girmemelidir.
   isteğe bağlı örnek cümle verilebilir. Eklenen kelime iki yönlü karta dönüşür, çalışma kuyruğuna girer ve JSON
   yedeğine dahil olur. Aynı Fince kelime ikinci kez eklenmez; listedeki 🗑 düğmesi kelimeyi kartlarıyla birlikte siler.
   Kayıtlar `state.custom` alanında tutulur, yerleşik sözlük değişmez. Sözlükteki “Kapsam” seçicisiyle
-  listeyi yalnızca kendi kelimelerine indirebilirsin; seçilen kategori ve kapsam sonraki açılışta korunur.
+  listeyi yalnızca kendi kelimelerine indirebilirsin; seçilen kategori, kapsam ve arama metni sonraki
+  açılışta korunur.
+- **Sistematik hata raporu:** İstatistik sekmesi, zaten biriken veriyi desenlere göre toplar: hangi hâl eki ya da
+  fiil kişisinde daha çok unutuyorsun, en çok takıldığın kelimeler hangileri ve yazmada hangi harfler sürekli
+  eksik/fazla yazılıyor. Yeni bir sayaç tutulmaz; rapor mevcut kart ilerlemesi ve yazma kayıtlarından türetilir.
 - **Yazma modu:** Kelime ve boşluk kartlarında cevap klavyeyle yazılır ve toleranslı karşılaştırılır:
   büyük/küçük harf, noktalama ve ä/ö/å ayrımı yok sayılır, 5+ harfli cevaplarda tek harflik yazım hatası kabul edilir.
   Kelime kartlarında `/` ile ayrılmış alternatif çevirilerden herhangi biri kabul edilir (ör. `erkek` ya da

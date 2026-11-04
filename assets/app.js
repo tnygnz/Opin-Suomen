@@ -1249,6 +1249,9 @@ function renderStats() {
   // Yazma alıştırmaları
   renderTypingStats();
 
+  // Sistematik hata raporu (mevcut ilerlemeden türetilir)
+  renderMistakeReport();
+
   // Kategori ilerlemesi
   const wrap = $("#catProgress");
   wrap.textContent = "";
@@ -1374,6 +1377,164 @@ function renderTypingStats() {
   });
 }
 
+/* ── Sistematik hata raporu ────────────────────────
+   Yeni sayaç tutmaz: kartlardaki unutma/tekrar sayıları ile yazma hatalarından
+   desen çıkarır (hâl eki, fiil kişisi, yön, harf). */
+function reportPattern(dir) {
+  const caseKey = caseOfDir(dir);
+  if (caseKey) return { key: `form:${caseKey}`, label: `Hâl eki · ${CASES[caseKey]?.label || caseKey}` };
+  const personKey = conjOfDir(dir);
+  if (personKey) return { key: `conj:${personKey}`, label: `Fiil · ${PERSONS[personKey]?.label || personKey}` };
+  if (dir === "cloze") return { key: "cloze", label: "Boşluk doldurma" };
+  if (dir.startsWith("extra")) return { key: "extra", label: "Ek tekrar kartları" };
+  return { key: dir, label: dir === "tr-fi" ? "Türkçe → Fince" : "Fince → Türkçe" };
+}
+
+/** Kartlardaki unutma/tekrar sayılarını desenlere göre toplar. */
+function reportPatternRows() {
+  const groups = new Map();
+  let lapses = 0;
+  let reps = 0;
+  for (const [key, card] of Object.entries(state.cards)) {
+    const dir = key.slice(key.indexOf("|") + 1);
+    const meta = reportPattern(dir);
+    const row = groups.get(meta.key) || { ...meta, cards: 0, lapses: 0, reps: 0 };
+    row.cards += 1;
+    row.lapses += card.lapses || 0;
+    row.reps += card.reps || 0;
+    lapses += card.lapses || 0;
+    reps += card.reps || 0;
+    groups.set(meta.key, row);
+  }
+  return { rows: [...groups.values()], lapses, reps };
+}
+
+/** Yazma hatası kayıtlarından eksik/fazla harf desenlerini çıkarır. */
+function reportLetterRows() {
+  const missing = new Map();
+  const extra = new Map();
+  const bump = (map, ch) => map.set(ch, (map.get(ch) || 0) + 1);
+  const letters = (text) =>
+    [...String(text || "").toLocaleLowerCase("fi")].filter((ch) => /\p{L}/u.test(ch));
+
+  for (const item of state.typing?.recent || []) {
+    if (item.type !== "letter") continue;
+    const answer = letters(item.answer);
+    const given = letters(item.given);
+    const pool = new Map();
+    answer.forEach((ch) => pool.set(ch, (pool.get(ch) || 0) + 1));
+    given.forEach((ch) => {
+      const left = pool.get(ch) || 0;
+      if (left > 0) pool.set(ch, left - 1);
+      else bump(extra, ch);
+    });
+    pool.forEach((left, ch) => {
+      for (let i = 0; i < left; i += 1) bump(missing, ch);
+    });
+  }
+
+  const top = (map) => [...map.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "fi"));
+  return { missing: top(missing).slice(0, 3), extra: top(extra).slice(0, 3) };
+}
+
+function renderMistakeReport() {
+  const { rows, lapses, reps } = reportPatternRows();
+  const typing = state.typing || {};
+  const typingErrors = (typing.letter || 0) + (typing.order || 0) + (typing.word || 0);
+  const ranked = rows
+    .filter((r) => r.lapses > 0)
+    .sort((a, b) => b.lapses - a.lapses || b.reps - a.reps);
+
+  $("#reportSummary").textContent = lapses || typingErrors
+    ? `${reps} tekrar · ${lapses} unutma · ${typingErrors} yazma hatası`
+    : "veri bekleniyor";
+
+  const weak = ranked[0];
+  $("#reportHint").textContent = !reps && !typingErrors
+    ? "Rapor çalıştıkça oluşur: tekrarlar ve yazma denemeleri biriktikçe zayıf desenler burada listelenir."
+    : weak
+      ? `En zayıf desen: ${weak.label} — ${weak.lapses} unutma / ${weak.cards} kart. Aşağıdaki listeler bu deseni ve en çok takıldığın kelimeleri gösterir.`
+      : "Unutulan kart yok; yazmada sürekli düşen harfler aşağıda.";
+
+  const patterns = $("#reportPatterns");
+  patterns.textContent = "";
+  const maxLapse = Math.max(1, ...ranked.map((r) => r.lapses));
+  ranked.slice(0, 6).forEach((r) => {
+    const row = document.createElement("div");
+    row.className = "cat-row";
+    const name = document.createElement("span");
+    name.className = "cat-name";
+    name.textContent = r.label;
+    name.title = `${r.cards} kart · ${r.reps} tekrar · ${r.lapses} unutma`;
+    const bar = document.createElement("div");
+    bar.className = "cat-bar";
+    const fill = document.createElement("span");
+    fill.style.width = `${Math.round((r.lapses / maxLapse) * 100)}%`;
+    fill.style.background = "linear-gradient(90deg, var(--again), #e0705f)";
+    bar.append(fill);
+    const num = document.createElement("span");
+    num.className = "cat-num";
+    num.textContent = `${r.lapses} / ${r.cards}`;
+    row.append(name, bar, num);
+    patterns.append(row);
+  });
+
+  const words = Object.entries(state.cards)
+    .filter(([, card]) => (card.lapses || 0) > 0)
+    .map(([key, card]) => ({
+      fi: key.slice(0, key.indexOf("|")),
+      dir: key.slice(key.indexOf("|") + 1),
+      card,
+    }))
+    .sort((a, b) => (b.card.lapses || 0) - (a.card.lapses || 0) || (b.card.reps || 0) - (a.card.reps || 0))
+    .slice(0, 5);
+
+  const wordWrap = $("#reportWords");
+  wordWrap.textContent = "";
+  wordWrap.hidden = words.length === 0;
+  words.forEach(({ fi, dir, card }) => {
+    const vocab = VOCAB.find((v) => v.fi === fi);
+    const li = document.createElement("li");
+    li.className = "error-item";
+    const tag = document.createElement("span");
+    tag.className = "err-tag";
+    tag.textContent = `${card.lapses} unutma`;
+    const phrase = document.createElement("span");
+    phrase.className = "err-phrase";
+    phrase.lang = "fi";
+    phrase.textContent = fi;
+    const detail = document.createElement("span");
+    detail.className = "err-diff";
+    detail.textContent = `${vocab?.tr || ""} · ${reportPattern(dir).label} · ${card.reps || 0} tekrar`;
+    li.append(tag, phrase, detail);
+    wordWrap.append(li);
+  });
+
+  const { missing, extra } = reportLetterRows();
+  const letterWrap = $("#reportLetters");
+  letterWrap.textContent = "";
+  const letterRows = [
+    ...missing.map(([ch, n]) => [`“${ch}” harfi eksik kaldı`, `${n} kez`]),
+    ...extra.map(([ch, n]) => [`“${ch}” fazladan yazıldı`, `${n} kez`]),
+  ];
+  letterWrap.hidden = letterRows.length === 0;
+  letterRows.forEach(([label, detail]) => {
+    const li = document.createElement("li");
+    li.className = "error-item";
+    const tag = document.createElement("span");
+    tag.className = "err-tag";
+    tag.textContent = "harf";
+    const phrase = document.createElement("span");
+    phrase.className = "err-phrase";
+    phrase.textContent = label;
+    const info = document.createElement("span");
+    info.className = "err-diff";
+    info.textContent = detail;
+    li.append(tag, phrase, info);
+    letterWrap.append(li);
+  });
+}
+
 /* ── Ayarlar ─────────────────────────────────────── */
 function renderSettings() {
   $$("#dirSeg button").forEach((b) => {
@@ -1480,7 +1641,11 @@ function bindEvents() {
     addCustomWord();
   });
 
-  $("#dictSearch").addEventListener("input", renderDictionary);
+  $("#dictSearch").addEventListener("input", (e) => {
+    state.ui.dictSearch = e.target.value;
+    store.saveState(state);
+    renderDictionary();
+  });
   $("#dictCat").addEventListener("change", (e) => {
     state.ui.dictCat = e.target.value;
     store.saveState(state);
@@ -1661,14 +1826,17 @@ function pickOption(select, value, fallback = "all") {
   return [...select.options].some((option) => option.value === value) ? value : fallback;
 }
 
-/** Kapsam/kategori seçimlerini kalıcı durumdan seçicilere uygular. */
+/** Kapsam/kategori seçimlerini ve arama metnini kalıcı durumdan geri yükler. */
 function restoreDictionaryFilters() {
   const cat = $("#dictCat");
   const scope = $("#dictScope");
+  const search = $("#dictSearch");
   cat.value = pickOption(cat, state.ui.dictCat);
   scope.value = pickOption(scope, state.ui.dictScope);
+  search.value = typeof state.ui.dictSearch === "string" ? state.ui.dictSearch : "";
   state.ui.dictCat = cat.value;
   state.ui.dictScope = scope.value;
+  state.ui.dictSearch = search.value;
 }
 
 /* ── Başlangıç ───────────────────────────────────── */
