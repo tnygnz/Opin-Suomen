@@ -735,6 +735,24 @@ async function testFsrsMath() {
   check("30 günlük tahmin tekrar üretiyor", count >= 1, String(count));
   const p = fsrs.plan({ newLeft: 210, days: 21, reviews: 420 });
   check("plan günlük yükü hesaplıyor", p.perDayNew === 10 && p.perDayReviews === 20, JSON.stringify(p));
+
+  const agg = fsrs.recordShadow(fsrs.recordShadow(undefined, 0.9, true, now), 0.8, false, now);
+  check("gölge kalibrasyonu birikiyor", agg.reviews === 2 && agg.hits === 1 && agg.since === now, JSON.stringify(agg));
+  const stats = fsrs.shadowStats(agg, now + 5 * fsrs.DAY);
+  check("gölge özeti gün ve ortalamayı veriyor", stats.samples === 2 && stats.days === 5 && Math.abs(stats.predicted - 0.85) < 1e-9, JSON.stringify(stats));
+  check("yetersiz veride karar beklemede", fsrs.migrationVerdict({ ...stats, sm2: 100, fsrsCount: 80 }).level === "collect");
+  check(
+    "iyi kalibrasyonda geçiş öneriliyor",
+    fsrs.migrationVerdict({ samples: 400, days: 30, predicted: 0.9, observed: 0.89, brier: 0.18, sm2: 100, fsrsCount: 80 }).level === "go"
+  );
+  check(
+    "sınırda kalibrasyonda temkin",
+    fsrs.migrationVerdict({ samples: 400, days: 30, predicted: 0.9, observed: 0.83, brier: 0.26, sm2: 100, fsrsCount: 90 }).level === "caution"
+  );
+  check(
+    "kötü kalibrasyonda geçiş reddediliyor",
+    fsrs.migrationVerdict({ samples: 400, days: 30, predicted: 0.9, observed: 0.7, brier: 0.34, sm2: 100, fsrsCount: 95 }).level === "no"
+  );
 }
 
 /* ── 17. Karşılaştırma ve sınav planı arayüzü ───── */
@@ -775,7 +793,28 @@ async function testEngineCompareAndPlanner() {
   $(w, "#undoBtn").click();
   const undone = await savedState(w);
   check("geri alma gölgeyi de siliyor", undone.cards[`${fi}|fi-tr`].fsrs === undefined);
+
+  $(w, '.tab[data-view="stats"]').click();
+  check("karar kutusu görünüyor", $(w, "#engineVerdict").hidden === false);
+  check("veri azken karar beklemede", $(w, "#verdictTitle").textContent.includes("veri birikiyor"), $(w, "#verdictTitle").textContent);
+  check("karar kutusu yük farkını anıyor", $(w, "#verdictDetail").textContent.length > 0, $(w, "#verdictDetail").textContent);
   await close(dom);
+
+  // Gerçek hatırlama: 10 gün önce görülmüş, süresi gelmiş kart
+  const st2 = seed({ newCard: { fi, dir: "fi-tr" } });
+  const dueCard = st2.cards[`${fi}|fi-tr`];
+  dueCard.state = "review";
+  dueCard.due = Date.now() - 1000;
+  dueCard.interval = 30;
+  dueCard.last = Date.now() - 10 * fsrs.DAY;
+  const dom2 = await boot(st2);
+  const w2 = dom2.window;
+  $(w2, "#revealBtn").click();
+  $(w2, '[data-grade="good"]').click();
+  const recorded = await savedState(w2);
+  check("gölge özetine hatırlama yazıldı", recorded.fsrs.reviews === 1 && recorded.fsrs.hits === 1, JSON.stringify(recorded.fsrs));
+  check("öngörülen hatırlama kaydedildi", recorded.fsrs.predicted > 0.8 && recorded.fsrs.predicted <= 1, String(recorded.fsrs.predicted));
+  await close(dom2);
 }
 
 const tests = [

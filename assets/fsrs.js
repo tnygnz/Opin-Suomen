@@ -166,6 +166,83 @@ export function plan({ newLeft = 0, days = 1, reviews = 0 } = {}) {
   };
 }
 
+/** Karar eşikleri: bu kadar cevap ve gün birikmeden geçiş konuşulmaz. */
+export const MIN_SHADOW_SAMPLES = 150;
+export const MIN_SHADOW_DAYS = 14;
+
+/**
+ * Tek bir hatırlama denemesinin tahminini gölge özetine ekler. Yalnızca aynı gün
+ * öğrenme adımları dışındaki denemeler çağırır; `r` cevap anındaki tahmindir.
+ */
+export function recordShadow(aggregate, r, ok, now = Date.now()) {
+  const next = { since: 0, reviews: 0, predicted: 0, hits: 0, brier: 0, ...(aggregate || {}) };
+  if (!next.since) next.since = now;
+  next.reviews += 1;
+  next.predicted += clamp(r, 0, 1);
+  if (ok) next.hits += 1;
+  next.brier += Math.pow(clamp(r, 0, 1) - (ok ? 1 : 0), 2);
+  return next;
+}
+
+/** Gölge özetini okunur ortalamalara çevirir. */
+export function shadowStats(aggregate = {}, now = Date.now()) {
+  const reviews = Math.max(0, aggregate.reviews || 0);
+  return {
+    samples: reviews,
+    days: aggregate.since ? Math.max(0, Math.floor((now - aggregate.since) / DAY)) : 0,
+    predicted: reviews ? (aggregate.predicted || 0) / reviews : 0,
+    observed: reviews ? (aggregate.hits || 0) / reviews : 0,
+    brier: reviews ? (aggregate.brier || 0) / reviews : 0,
+  };
+}
+
+/**
+ * Gölge verisinden geçiş kararı: yeterli örnek var mı, FSRS hatırlamayı iyi mi
+ * öngörüyor (Brier) ve 30 günlük yük SM-2'ye göre nerede?
+ */
+export function migrationVerdict(opts = {}) {
+  const { samples = 0, days = 0, predicted = 0, observed = 0, brier = 0, sm2 = 0, fsrsCount = 0 } = opts;
+  const pct = (v) => `%${Math.round(v * 100)}`;
+  const gap = Math.abs(predicted - observed);
+  const workload = sm2 ? Math.round((1 - fsrsCount / sm2) * 100) : 0;
+  const workloadText = !sm2
+    ? ""
+    : workload > 0
+      ? `Aynı 30 günde FSRS %${workload} daha az tekrar istiyor.`
+      : workload < 0
+        ? `Aynı 30 günde FSRS %${Math.abs(workload)} daha fazla tekrar istiyor.`
+        : "İki motor aynı 30 günde eşit tekrar istiyor.";
+
+  if (samples < MIN_SHADOW_SAMPLES || days < MIN_SHADOW_DAYS) {
+    return {
+      level: "collect",
+      title: `Karar için veri birikiyor: ${samples}/${MIN_SHADOW_SAMPLES} cevap · ${days}/${MIN_SHADOW_DAYS} gün`,
+      detail: `Gölge motor yalnızca gerçek tekrar denemelerini sayar (öğrenme adımları hariç). ${workloadText}`.trim(),
+    };
+  }
+
+  const calibration = `Brier ${brier.toFixed(2).replace(".", ",")} · öngörülen ${pct(predicted)} / gerçek ${pct(observed)}`;
+  if (brier <= 0.22 && gap <= 0.06) {
+    return {
+      level: "go",
+      title: `Geçiş düşük riskli · ${calibration}`,
+      detail: `FSRS tahminleri tutarlı. ${workloadText}`.trim(),
+    };
+  }
+  if (brier <= 0.28) {
+    return {
+      level: "caution",
+      title: `Kalibrasyon sınırda · ${calibration}`,
+      detail: `${workloadText} Bir hafta daha gölge verisi kararı netleştirir.`.trim(),
+    };
+  }
+  return {
+    level: "no",
+    title: `Geçiş önerilmiyor · ${calibration}`,
+    detail: "FSRS bu veride hatırlamayı SM-2'den daha kötü öngörüyor; önce parametrelerin kalibrasyonu gerekir.",
+  };
+}
+
 /** Gölge durumlardan, "İyi" cevap varsayımıyla dönem içi tekrar sayısı. */
 export function forecast(shadows, horizonDays, opts = {}) {
   const now = opts.now ?? Date.now();

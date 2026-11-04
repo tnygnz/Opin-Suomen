@@ -72,7 +72,9 @@ kapalıyken gramer kartları sıraya girmemelidir.
   aynı kartlar için 30 günlük tekrar sayısı (SM-2 / FSRS), fark yüzdesi, ortalama aralık ve geçmiş
   cevaplardan kalibre edilen kişisel parametreler (hedef hatırlama, başlangıç hızı) görünür. "Sınav planı"
   hedef tarihe kadar gereken günlük yeni kart ve tekrar yükünü hesaplar; tek dokunuşla günlük limite yazar.
-  Motor geçişi, gölge farkı oturana kadar yapılmaz.
+  Motor geçişi, gölge farkı oturana kadar yapılmaz. FSRS'in her gerçek tekrar denemesindeki hatırlama tahmini
+  ile gerçekleşen sonuç ayrıca biriktirilir; "geçiş kararı" kutusu 150 cevap ve 14 gün eşiğinden sonra Brier
+  skoru, öngörülen/gerçek hatırlama ve 30 günlük yük farkını birleştirip geçiş önerisi verir.
 - **Yazma modu:** Kelime ve boşluk kartlarında cevap klavyeyle yazılır ve toleranslı karşılaştırılır:
   büyük/küçük harf, noktalama ve ä/ö/å ayrımı yok sayılır, 5+ harfli cevaplarda tek harflik yazım hatası kabul edilir.
   Kelime kartlarında `/` ile ayrılmış alternatif çevirilerden herhangi biri kabul edilir (ör. `erkek` ya da

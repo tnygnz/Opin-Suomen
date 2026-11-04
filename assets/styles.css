@@ -782,6 +782,22 @@ input[type="checkbox"] { width: 17px; height: 17px; accent-color: var(--brand); 
   .stat-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
+/* Geçiş kararı kutusu: gölge kalibrasyonu ve yük farkı */
+.verdict {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  display: grid;
+  gap: 4px;
+  font-size: 13px;
+}
+.verdict b { font-size: 13.5px; }
+.verdict span { color: var(--muted); }
+.verdict.go { border-color: rgba(47, 133, 90, 0.55); background: rgba(47, 133, 90, 0.08); }
+.verdict.caution { border-color: rgba(183, 121, 31, 0.55); background: rgba(183, 121, 31, 0.08); }
+.verdict.no { border-color: rgba(197, 48, 48, 0.55); background: rgba(197, 48, 48, 0.08); }
+
 /* Sınav planındaki tarih alanı diğer alanlarla aynı görünsün */
 #planDate {
   padding: 9px 12px;

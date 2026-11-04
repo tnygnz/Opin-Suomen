@@ -38,6 +38,8 @@ export function defaultState() {
     daily: { date: todayKey(), newDone: 0, reviewDone: 0, correct: 0, total: 0 },
     history: {},
     totals: { reviews: 0, correct: 0 },
+    // FSRS gölge kalibrasyonu: gerçek hatırlama denemelerinin tahmin/gerçekleşme toplamları
+    fsrs: { since: 0, reviews: 0, predicted: 0, hits: 0, brier: 0 },
     typing: { attempts: 0, correct: 0, tolerated: 0, order: 0, letter: 0, word: 0, recent: [], byCard: {} },
     // Sözlük görünümünde seçilen kategori ve kapsam sonraki açılışta korunur.
     ui: { view: "study", dictCat: "all", dictScope: "all", dictSearch: "", planDate: "" },
@@ -115,6 +117,7 @@ function mergeDefaults(raw) {
     settings: normalizeTypingSettings(raw.settings),
     daily: { ...base.daily, ...(raw.daily || {}) },
     totals: { ...base.totals, ...(raw.totals || {}) },
+    fsrs: { ...base.fsrs, ...(raw.fsrs || {}) },
     history: raw.history && typeof raw.history === "object" ? raw.history : {},
     typing: {
       ...base.typing,

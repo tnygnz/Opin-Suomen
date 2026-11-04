@@ -1121,6 +1121,7 @@ function renderEngineCompare(now = Date.now()) {
     $("#cmpInterval").textContent = "—";
     $("#cmpParams").textContent = "Karşılaştırma için en az bir tekrar edilmiş kart gerekir.";
     note.textContent = "veri bekleniyor";
+    renderEngineVerdict(now, { sm2: 0, fsrsCount: 0 });
     return;
   }
   const { sm2, fsrsCount, params } = forecastReviews(cards, 30, now);
@@ -1139,6 +1140,18 @@ function renderEngineCompare(now = Date.now()) {
     `Kişisel parametreler: hedef hatırlama %${Math.round(params.retention * 100)} · ` +
     `başlangıç hızı ${params.speed.toFixed(2).replace(".", ",")}× · ${params.reviews} cevaptan kalibre`;
   note.textContent = `${cards.length} tekrar kartı · 30 gün`;
+  renderEngineVerdict(now, { sm2, fsrsCount });
+}
+
+/** Gölge kalibrasyonu + yük farkını tek bir geçiş önerisine çevirir. */
+function renderEngineVerdict(now, compare) {
+  const stats = fsrs.shadowStats(state.fsrs, now);
+  const verdict = fsrs.migrationVerdict({ ...stats, sm2: compare.sm2, fsrsCount: compare.fsrsCount });
+  const box = $("#engineVerdict");
+  box.className = `verdict ${verdict.level}`;
+  box.hidden = false;
+  $("#verdictTitle").textContent = verdict.title;
+  $("#verdictDetail").textContent = verdict.detail;
 }
 
 function renderPlanner(now = Date.now()) {
@@ -1187,7 +1200,10 @@ function gradeCurrent(g) {
     history: JSON.parse(JSON.stringify(state.history)),
     totals: { ...state.totals },
     focus: focusSummary ? { ...focusSummary } : null,
+    fsrs: { ...state.fsrs },
   };
+
+  const ok = g !== "again";
 
   if (current.dir === "extra") {
     // Ek tekrar kartı SRS aralığına girmez: başarıyla bitirilirse emekliye ayrılır.
@@ -1203,12 +1219,16 @@ function gradeCurrent(g) {
   } else {
     const next = schedule(card, g);
     // FSRS-5 gölge motoru: kuyruğa dokunmadan aynı cevabı kendi belleğinde işler.
-    next.fsrs = fsrs.updateCard(shadowOf(card), g, Date.now(), fsrsParams());
+    const shadowNext = fsrs.updateCard(shadowOf(card), g, Date.now(), fsrsParams());
+    next.fsrs = shadowNext;
+    // Yalnızca gerçek hatırlama denemeleri kalibrasyon özetine girer (öğrenme adımları hariç).
+    if (shadowNext.elapsed >= 0.5) {
+      state.fsrs = fsrs.recordShadow(state.fsrs, shadowNext.r, ok, Date.now());
+    }
     state.cards[current.key] = next;
   }
 
   const today = store.todayKey();
-  const ok = g !== "again";
   state.daily.total += 1;
   if (ok) state.daily.correct += 1;
   if (wasNew) state.daily.newDone += 1;
@@ -1241,12 +1261,13 @@ function gradeCurrent(g) {
 
 function undo() {
   if (!undoSnapshot) return;
-  const { key, id, dir, prevCard, daily, history, totals, focus } = undoSnapshot;
+  const { key, id, dir, prevCard, daily, history, totals, focus, fsrs: fsrsSnapshot } = undoSnapshot;
   state.cards[key] = prevCard;
   state.daily = daily;
   state.history = history;
   state.totals = totals;
   focusSummary = focus ? { ...focus } : null;
+  state.fsrs = { ...fsrsSnapshot };
   sessionAnswered = Math.max(0, sessionAnswered - 1);
   undoSnapshot = null;
   $("#undoBtn").disabled = true;
