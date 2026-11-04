@@ -3,6 +3,8 @@
 Fince ↔ Türkçe çalışan, tarayıcıda tamamen yerel olarak çalışan aralıklı tekrar (SRS) uygulaması.
 Hesap yok, sunucu yok, ağ isteği yok: ilerleme `localStorage` içinde tutulur.
 
+[![Testler](https://github.com/tnygnz/suomi-tr-app/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/tnygnz/suomi-tr-app/actions/workflows/test.yml)
+
 ## Çalıştırma
 
 Derleme adımı ve bağımlılık yoktur; dosyaları herhangi bir statik sunucudan servis etmek yeterlidir:
