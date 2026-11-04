@@ -141,3 +141,8 @@ verinin cihazda kalması ve aralıklı tekrarın temel alınması.
 - Hata türü sezgisel sınıflandırılır: kelime kümesi aynıysa “sıra”, kelime sayısı ya da kelime kimliği
   değiştiyse “kelime farkı”, aksi halde “harf hatası”. Çekim eki farkı çoğunlukla “kelime farkı” sayılır.
   İstatistikler yalnızca bu tarayıcıda tutulur; ilerlemeyi sıfırlamak onları da temizler.
+
+## Lisans
+
+MIT — ayrıntılar için [LICENSE](LICENSE) dosyasına bakın. Kodu kendi çalışmanız için kopyalayabilir,
+değiştirebilir ve dağıtabilirsiniz; yalnızca telif ve izin bildirimini koruyun.
