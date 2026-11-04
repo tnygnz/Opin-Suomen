@@ -526,6 +526,16 @@ async function testCustomWords() {
   check("kelime sözlük dizisine eklendi", VOCAB.some((v) => v.fi === "viini"));
   check("sözlük listesinde görünüyor", $(w, "#wordList").textContent.includes("viini"), $(w, "#dictCount").textContent);
 
+  $(w, "#dictScope").value = "custom";
+  $(w, "#dictScope").dispatchEvent(new w.Event("change", { bubbles: true }));
+  const ownRows = [...$(w, "#wordList").querySelectorAll(".word")];
+  check(
+    "kendi kelime filtresi yalnızca kendi kelimeyi gösteriyor",
+    ownRows.length === 1 && ownRows[0].textContent.includes("viini"),
+    `${ownRows.length} satır`
+  );
+  check("filtre sayacı eşleşiyor", $(w, "#dictCount").textContent === "1", $(w, "#dictCount").textContent);
+
   add("viini", "farklı anlam");
   const dup = JSON.parse(w.localStorage.getItem(store.STORAGE_KEY));
   check("aynı Fince kelime ikinci kez eklenmiyor", dup.custom.length === 1, `${dup.custom.length} kayıt`);
@@ -536,6 +546,11 @@ async function testCustomWords() {
   check("kartları da temizlendi", !after.cards["viini|fi-tr"] && !after.cards["viini|tr-fi"]);
   check("sözlükten kalktı", !VOCAB.some((v) => v.fi === "viini"));
   check("liste yeniden çizildi", !$(w, "#wordList").textContent.includes("viini"));
+  check(
+    "filtre boşken ipucu gösteriyor",
+    $(w, "#wordList .empty-hint")?.textContent.includes("Henüz kendi kelimeni"),
+    $(w, "#wordList").textContent.trim()
+  );
   await close(dom);
 }
 

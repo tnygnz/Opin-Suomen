@@ -57,7 +57,8 @@ kapalıyken gramer kartları sıraya girmemelidir.
 - **Kendi kelimelerin:** Sözlük ekranındaki formla Fince–Türkçe kelime ekle; seviye (A1/A2/B1), kategori ve
   isteğe bağlı örnek cümle verilebilir. Eklenen kelime iki yönlü karta dönüşür, çalışma kuyruğuna girer ve JSON
   yedeğine dahil olur. Aynı Fince kelime ikinci kez eklenmez; listedeki 🗑 düğmesi kelimeyi kartlarıyla birlikte siler.
-  Kayıtlar `state.custom` alanında tutulur, yerleşik sözlük değişmez.
+  Kayıtlar `state.custom` alanında tutulur, yerleşik sözlük değişmez. Sözlükteki “Kapsam” seçicisiyle
+  listeyi yalnızca kendi kelimelerine indirebilirsin.
 - **Yazma modu:** Kelime ve boşluk kartlarında cevap klavyeyle yazılır ve toleranslı karşılaştırılır:
   büyük/küçük harf, noktalama ve ä/ö/å ayrımı yok sayılır, 5+ harfli cevaplarda tek harflik yazım hatası kabul edilir.
   Kelime kartlarında `/` ile ayrılmış alternatif çevirilerden herhangi biri kabul edilir (ör. `erkek` ya da

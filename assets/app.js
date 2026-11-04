@@ -1094,12 +1094,14 @@ function badgeFor(card) {
 function renderDictionary() {
   const q = $("#dictSearch").value.trim().toLocaleLowerCase("tr");
   const cat = $("#dictCat").value;
+  const scope = $("#dictScope").value;
   const dir = dirsActive()[0];
   const list = $("#wordList");
   list.textContent = "";
 
   let shown = 0;
   VOCAB.forEach((v, i) => {
+    if (scope === "custom" && !v.custom) return;
     if (cat !== "all" && v.cat !== cat) return;
     if (q) {
       const hay = `${v.fi} ${v.tr} ${(v.ex || []).join(" ")}`.toLocaleLowerCase("tr");
@@ -1184,7 +1186,10 @@ function renderDictionary() {
   if (shown === 0) {
     const hint = document.createElement("li");
     hint.className = "empty-hint";
-    hint.textContent = "Aramaya uygun kelime bulunamadı.";
+    hint.textContent =
+      scope === "custom" && !q && cat === "all"
+        ? "Henüz kendi kelimeni eklemedin; yukarıdaki formla ekleyebilirsin."
+        : "Aramaya uygun kelime bulunamadı.";
     list.append(hint);
   }
 }
@@ -1477,6 +1482,7 @@ function bindEvents() {
 
   $("#dictSearch").addEventListener("input", renderDictionary);
   $("#dictCat").addEventListener("change", renderDictionary);
+  $("#dictScope").addEventListener("change", renderDictionary);
 
   $$("#dirSeg button").forEach((btn) => {
     btn.addEventListener("click", () => {
