@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="tr" data-theme="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Fince–Türkçe kişisel kelime uygulaması: aralıklı tekrar (SRS), örnek cümleler, telaffuz ve istatistikler. Tamamen çevrimdışı çalışır." />
+  <meta name="theme-color" content="#0b4f9c" />
+  <title>Suomi–Türkçe · Kişisel Dil Uygulaması</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230b4f9c'/%3E%3Cpath d='M16 20h32M16 32h22M16 44h28' stroke='white' stroke-width='6' stroke-linecap='round'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="assets/styles.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">FI</span>
+        <div class="brand-text">
+          <strong>Suomi–Türkçe</strong>
+          <small>kişisel kelime defteri</small>
+        </div>
+      </div>
+
+      <nav class="tabs" aria-label="Bölümler">
+        <button class="tab is-active" data-view="study" type="button">
+          <span aria-hidden="true">🃏</span><span class="tab-label">Çalış</span>
+        </button>
+        <button class="tab" data-view="dictionary" type="button">
+          <span aria-hidden="true">📖</span><span class="tab-label">Sözlük</span>
+        </button>
+        <button class="tab" data-view="stats" type="button">
+          <span aria-hidden="true">📊</span><span class="tab-label">İstatistik</span>
+        </button>
+        <button class="tab" data-view="settings" type="button">
+          <span aria-hidden="true">⚙️</span><span class="tab-label">Ayarlar</span>
+        </button>
+      </nav>
+
+      <button id="themeBtn" class="icon-btn theme-btn" type="button" title="Aydınlık / karanlık tema" aria-label="Tema değiştir">
+        <span id="themeIcon" aria-hidden="true">🌙</span>
+      </button>
+    </header>
+
+    <main>
+      <!-- ═══ ÇALIŞ ═══ -->
+      <section id="view-study" class="view" aria-label="Çalışma ekranı">
+        <div class="study-head">
+          <div class="study-meta">
+            <span class="pill" id="dirPill">Fince → Türkçe</span>
+            <span class="pill pill-ghost" id="deckPill">Tüm desteler</span>
+            <div class="segmented level-seg" id="levelSeg" role="group" aria-label="Seviye filtresi">
+              <button type="button" data-level="all" aria-pressed="true">Tümü</button>
+              <button type="button" data-level="A1" aria-pressed="false">A1</button>
+              <button type="button" data-level="A2" aria-pressed="false">A2</button>
+              <button type="button" data-level="B1" aria-pressed="false">B1</button>
+            </div>
+          </div>
+          <div class="counters">
+            <div class="counter"><b id="cntNew">0</b><small>Yeni</small></div>
+            <div class="counter"><b id="cntLearn">0</b><small>Öğrenme</small></div>
+            <div class="counter"><b id="cntDue">0</b><small>Tekrar</small></div>
+          </div>
+        </div>
+
+        <div class="progress" role="progressbar" aria-label="Oturum ilerlemesi" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+          <div class="progress-bar" id="sessionBar"></div>
+        </div>
+
+        <div class="card-stage">
+          <article class="flashcard" id="flashcard" hidden>
+            <div class="fc-top">
+              <div class="fc-chips">
+                <span class="chip" id="fcCat">Kategori</span>
+                <span class="chip chip-level" id="fcLevel">A1</span>
+              </div>
+              <span class="chip chip-ghost" id="fcState">Yeni</span>
+            </div>
+
+            <div class="fc-prompt">
+              <p class="prompt-text" id="fcPrompt" lang="fi">—</p>
+              <button class="icon-btn speak" id="speakPrompt" type="button" title="Telaffuzu dinle" aria-label="Telaffuzu dinle">🔊</button>
+            </div>
+
+            <form class="cloze-form" id="clozeForm" hidden novalidate>
+              <label class="sr-only" for="clozeInput">Eksik ifade</label>
+              <input id="clozeInput" type="text" lang="fi" placeholder="Eksik ifadeyi yaz…"
+                     autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+              <button class="btn primary" type="submit">Kontrol et</button>
+              <button class="btn ghost" type="button" id="clozeSkip">Bilmiyorum</button>
+            </form>
+            <div class="cloze-feedback" id="clozeFeedback" hidden></div>
+
+            <div class="fc-answer" id="fcAnswer" hidden>
+              <div class="answer-line">
+                <p class="answer-text" id="fcAnswerText">—</p>
+                <button class="icon-btn speak" id="speakAnswer" type="button" title="Telaffuzu dinle" aria-label="Telaffuzu dinle">🔊</button>
+              </div>
+              <p class="example" id="fcExample"></p>
+              <p class="note" id="fcNote" hidden></p>
+            </div>
+          </article>
+
+          <div class="empty-card" id="fcEmpty" hidden>
+            <div class="empty-emoji" id="emptyEmoji">🎉</div>
+            <h2 id="emptyTitle">Bugünlük bitti</h2>
+            <p id="emptyText">Yarın yeni kartlarla devam edebilirsin.</p>
+            <div class="empty-actions">
+              <button class="btn ghost" id="emptyAgain" type="button">10 kart daha çalış</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="actions" id="revealRow">
+          <button class="btn primary wide" id="revealBtn" type="button">
+            Cevabı göster <kbd>Space</kbd>
+          </button>
+        </div>
+
+        <div class="actions grades" id="gradeRow" hidden>
+          <button class="btn grade again" data-grade="again" type="button"><span>Tekrar</span><small id="iv-again">1 dk</small></button>
+          <button class="btn grade hard" data-grade="hard" type="button"><span>Zor</span><small id="iv-hard">6 dk</small></button>
+          <button class="btn grade good" data-grade="good" type="button"><span>İyi</span><small id="iv-good">10 dk</small></button>
+          <button class="btn grade easy" data-grade="easy" type="button"><span>Kolay</span><small id="iv-easy">4 gün</small></button>
+        </div>
+
+        <div class="study-foot">
+          <button class="link-btn" id="undoBtn" type="button" disabled>↩ Son cevabı geri al</button>
+          <span class="foot-hint">Klavye: <kbd>Space</kbd> göster · <kbd>1</kbd>–<kbd>4</kbd> not ver</span>
+        </div>
+      </section>
+
+      <!-- ═══ SÖZLÜK ═══ -->
+      <section id="view-dictionary" class="view" hidden aria-label="Sözlük">
+        <div class="view-head">
+          <h1>Kelime defteri</h1>
+          <p class="lede"><span id="dictCount">0</span> kelime · çift yönlü · örnek cümleli</p>
+        </div>
+
+        <div class="toolbar">
+          <label class="field grow">
+            <span>Kelime ara</span>
+            <input id="dictSearch" type="search" placeholder="Fince veya Türkçe yaz…" autocomplete="off" />
+          </label>
+          <label class="field">
+            <span>Kategori</span>
+            <select id="dictCat"></select>
+          </label>
+        </div>
+
+        <ul class="word-list" id="wordList"></ul>
+      </section>
+
+      <!-- ═══ İSTATİSTİK ═══ -->
+      <section id="view-stats" class="view" hidden aria-label="İstatistikler">
+        <div class="view-head">
+          <h1>İlerleme</h1>
+          <p class="lede">Kart durumları, günlük seri ve kategori dağılımı · <span id="statsScope">Kapsam: tüm seviyeler</span></p>
+        </div>
+
+        <div class="stat-grid">
+          <div class="stat"><small>Bugünkü tekrar</small><b id="stToday">0</b><span id="stTodayAccuracy" class="stat-sub">doğruluk —</span></div>
+          <div class="stat"><small>Seri</small><b id="stStreak">0</b><span class="stat-sub">gün üst üste</span></div>
+          <div class="stat"><small>Öğrenilen</small><b id="stLearned">0</b><span class="stat-sub" id="stLearnedSub">/ 0 kart</span></div>
+          <div class="stat"><small>Olgun kart</small><b id="stMature">0</b><span class="stat-sub">21+ gün aralık</span></div>
+          <div class="stat"><small>Toplam tekrar</small><b id="stTotal">0</b><span class="stat-sub" id="stTotalAccuracy">doğruluk —</span></div>
+          <div class="stat"><small>Bugün kalan</small><b id="stRemaining">0</b><span class="stat-sub">kart</span></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Son 7 gün</h2>
+            <span class="muted" id="chartTotal"></span>
+          </div>
+          <div class="chart" id="chart"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Yazma alıştırmaları</h2>
+            <span class="muted" id="typingSummary">deneme yok</span>
+          </div>
+          <div class="mini-stats">
+            <div class="mini"><small>Deneme</small><b id="tpAttempts">0</b></div>
+            <div class="mini"><small>Doğruluk</small><b id="tpAccuracy">—</b></div>
+            <div class="mini"><small>Toleranslı doğru</small><b id="tpTolerated">0</b></div>
+          </div>
+          <div class="cat-progress" id="typingErrors"></div>
+          <ul class="error-list" id="extraWatches" hidden></ul>
+          <ul class="error-list" id="typingRecent" hidden></ul>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Kategori ilerlemesi</h2>
+            <span class="muted">öğrenilen / toplam</span>
+          </div>
+          <div class="cat-progress" id="catProgress"></div>
+        </div>
+      </section>
+
+      <!-- ═══ AYARLAR ═══ -->
+      <section id="view-settings" class="view" hidden aria-label="Ayarlar">
+        <div class="view-head">
+          <h1>Ayarlar</h1>
+          <p class="lede">Öğrenme yönü, günlük limitler, yedekleme</p>
+        </div>
+
+        <div class="panel">
+          <h2>Öğrenme</h2>
+
+          <div class="field">
+            <span>Çalışma yönü</span>
+            <div class="segmented" id="dirSeg" role="radiogroup" aria-label="Çalışma yönü">
+              <button type="button" data-dir="fi-tr" role="radio">Fince → Türkçe</button>
+              <button type="button" data-dir="tr-fi" role="radio">Türkçe → Fince</button>
+              <button type="button" data-dir="both" role="radio">Karışık</button>
+            </div>
+          </div>
+
+          <label class="field">
+            <span>Günlük yeni kart: <b id="newPerDayVal">20</b></span>
+            <input id="newPerDay" type="range" min="5" max="60" step="5" />
+          </label>
+
+          <label class="field">
+            <span>Günlük tekrar limiti: <b id="reviewsPerDayVal">200</b></span>
+            <input id="reviewsPerDay" type="range" min="20" max="500" step="20" />
+          </label>
+
+          <label class="field">
+            <span>Telaffuz hızı: <b id="ttsRateVal">1,0×</b></span>
+            <input id="ttsRate" type="range" min="0.6" max="1.4" step="0.1" />
+          </label>
+
+          <label class="field inline">
+            <input type="checkbox" id="autoSpeak" />
+            <span>Kart açılınca Fince kelimeyi otomatik oku</span>
+          </label>
+
+          <label class="field inline">
+            <input type="checkbox" id="clozeEnabled" />
+            <span>Kalıp ifadeler için boşluk doldurma kartları</span>
+          </label>
+
+          <label class="field inline">
+            <input type="checkbox" id="typingWordsEnabled" />
+            <span>Kelime kartlarında cevabı yazarak kontrol et</span>
+          </label>
+
+          <label class="field inline">
+            <input type="checkbox" id="typingClozeEnabled" />
+            <span>Boşluk kartlarında cevabı yazarak kontrol et</span>
+          </label>
+
+          <label class="field">
+            <span>Ek tekrar eşiği: <b id="extraThresholdVal">2 hata</b></span>
+            <input id="extraThreshold" type="range" min="1" max="6" step="1" />
+          </label>
+        </div>
+
+        <div class="panel">
+          <h2>Veri</h2>
+          <p class="muted small">
+            Tüm ilerleme yalnızca bu tarayıcının yerel deposunda (<code id="storageName">localStorage</code>) tutulur.
+            Uygulama çalışırken hiçbir ağ isteği yapmaz; internet bağlantısı gerekmez.
+          </p>
+          <div class="btn-row">
+            <button class="btn ghost" id="exportBtn" type="button">⤓ Yedek indir (JSON)</button>
+            <label class="btn ghost file-btn">
+              ⤒ Yedeği geri yükle
+              <input id="importInput" type="file" accept="application/json,.json" hidden />
+            </label>
+            <button class="btn danger" id="resetBtn" type="button">İlerlemeyi sıfırla</button>
+          </div>
+        </div>
+
+        <div class="panel about">
+          <h2>Hakkında</h2>
+          <p>
+            <b>Suomi–Türkçe</b>, Fince ve Türkçe arasında çift yönlü çalışan kişisel bir kelime uygulamasıdır.
+            Zamanlayıcı, Anki'nin de temel aldığı SM-2 aralıklı tekrar ailesini kullanır: öğrenme adımları
+            1 dk → 10 dk, ardından kolaylık çarpanına göre büyüyen aralıklar.
+          </p>
+          <p class="muted small">
+            Arayüz ve veri modeli, referans olarak alınan AnkiDroid 2.25.3 kurulumunun çalışma biçiminden esinlenmiştir:
+            çevrimdışı öncelikli, ağ izni gerektirmeyen, tek kullanıcılı ve yalnızca yerel depolama kullanan bir yapı.
+          </p>
+          <dl class="ref-table">
+            <div><dt>Referans uygulama</dt><dd>AnkiDroid 2.25.3 (com.ichi2.anki)</dd></div>
+            <div><dt>Başlama eylemi</dt><dd>com.ichi2.anki.IntentHandler</dd></div>
+            <div><dt>Hedef / min SDK</dt><dd>36 / 24</dd></div>
+            <div><dt>İmza SHA-1</dt><dd><code>f24e06a3657b190a12671100402df32d7b9b3d36</code></dd></div>
+            <div><dt>Algoritma</dt><dd>SM-2 ailesi · 1 dk / 10 dk öğrenme adımları</dd></div>
+            <div><dt>Veri konumu</dt><dd>tarayıcı <code>localStorage</code> · ağ isteği yok</dd></div>
+          </dl>
+        </div>
+      </section>
+    </main>
+
+    <footer class="foot">
+      <span>Yerel çalışır · hesap gerekmez · <span id="footWords">0</span> kelime</span>
+      <span id="footDirection">Fince → Türkçe</span>
+    </footer>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+  <script type="module" src="assets/app.js"></script>
+</body>
+</html>
