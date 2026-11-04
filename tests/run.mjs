@@ -11,6 +11,7 @@ const indexPath = path.join(root, "index.html");
 const assetUrl = (name) => pathToFileURL(path.join(root, "assets", name)).href;
 
 const store = await import(assetUrl("store.js"));
+const fsrs = await import(assetUrl("fsrs.js"));
 const { VOCAB, CASES, FORMS, PERSONS, VERB_TYPES, CONJ, CATEGORIES } = await import(assetUrl("data.js"));
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -697,6 +698,86 @@ async function testFocusFromReport() {
   await close(dom);
 }
 
+/* ── 16. FSRS-5 motoru ──────────────────────────── */
+async function testFsrsMath() {
+  console.log("\n16) FSRS-5 motoru: bellek durumu, kişisel parametreler, plan");
+  const now = Date.UTC(2026, 0, 1, 9);
+
+  check("varsayılan parametre seti 19 ağırlık", fsrs.DEFAULT_W.length === 19, String(fsrs.DEFAULT_W.length));
+  check("aynı gün hatırlama 1", Math.abs(fsrs.retrievability(0, 5) - 1) < 1e-9);
+  check("10 günlük kararlılık %90 hedefte 10 gün", Math.abs(fsrs.intervalDays(10, 0.9) - 10) <= 1, String(fsrs.intervalDays(10, 0.9)));
+  check("düşük hedef daha uzun aralık", fsrs.intervalDays(10, 0.85) > fsrs.intervalDays(10, 0.95));
+
+  const first = fsrs.updateCard(null, "good", now);
+  check("yeni kartın kararlılığı ağırlıktan", Math.abs(first.s - fsrs.DEFAULT_W[2]) < 1e-9, String(first.s));
+  check("zorluk 1–10 arası", first.d >= 1 && first.d <= 10, String(first.d));
+  check("ilk cevap ileri tarih veriyor", first.due > now);
+
+  const later = fsrs.updateCard(first, "good", first.due);
+  check("ikinci doğru cevap kararlılığı artırıyor", later.s > first.s, `${first.s} → ${later.s}`);
+  check("hatırlama olasılığı kaydediliyor", later.r > 0 && later.r < 1, String(later.r));
+
+  const lapse = fsrs.updateCard(later, "again", later.due + 3 * fsrs.DAY);
+  check("unutma kararlılığı düşürüyor", lapse.s <= later.s, `${later.s} → ${lapse.s}`);
+  check("unutma zorluğu artırıyor", lapse.d >= later.d, `${later.d} → ${lapse.d}`);
+
+  const seeded = fsrs.seedFromSm2({ interval: 21, ease: 2.5, lapses: 0, reps: 4, due: now, last: now - 21 * fsrs.DAY }, now);
+  check("eski SM-2 kartı tohumlanıyor", seeded.s === 21 && seeded.d > 1 && seeded.d < 10, `${seeded.s}/${seeded.d}`);
+
+  const cold = fsrs.fitParams({ reviews: 0, correct: 0 });
+  check("veri yokken varsayılan hedef", cold.retention === 0.9 && cold.speed === 1, JSON.stringify(cold));
+  const weak = fsrs.fitParams({ reviews: 800, correct: 640 });
+  check("düşük doğruluk hedefi sıkılaştırıyor", weak.retention < 0.9, String(weak.retention));
+  const strong = fsrs.fitParams({ reviews: 800, correct: 760 });
+  check("yüksek doğruluk hedefi gevşetiyor", strong.retention > 0.9, String(strong.retention));
+
+  const count = fsrs.forecast([{ s: 5, d: 5, last: now, due: now }], 30, { now });
+  check("30 günlük tahmin tekrar üretiyor", count >= 1, String(count));
+  const p = fsrs.plan({ newLeft: 210, days: 21, reviews: 420 });
+  check("plan günlük yükü hesaplıyor", p.perDayNew === 10 && p.perDayReviews === 20, JSON.stringify(p));
+}
+
+/* ── 17. Karşılaştırma ve sınav planı arayüzü ───── */
+async function testEngineCompareAndPlanner() {
+  console.log("\n17) Zamanlayıcı karşılaştırması ve sınav planı");
+  const fi = VOCAB[0].fi;
+  const st = seed({ newCard: { fi, dir: "fi-tr" } });
+  const dom = await boot(st);
+  const w = dom.window;
+  $(w, '.tab[data-view="stats"]').click();
+
+  check("SM-2 tahmini sayı veriyor", Number($(w, "#cmpSm2").textContent) > 0, $(w, "#cmpSm2").textContent);
+  check("FSRS tahmini sayı veriyor", Number($(w, "#cmpFsrs").textContent) > 0, $(w, "#cmpFsrs").textContent);
+  check("fark yüzdesi gösteriliyor", $(w, "#cmpDiff").textContent.endsWith("%"), $(w, "#cmpDiff").textContent);
+  check("ortalama aralık iki motoru veriyor", $(w, "#cmpInterval").textContent.includes("gün"), $(w, "#cmpInterval").textContent);
+  check("kişisel parametreler açıklanıyor", $(w, "#cmpParams").textContent.includes("hedef hatırlama"), $(w, "#cmpParams").textContent);
+
+  const target = new Date(Date.now() + 21 * fsrs.DAY);
+  const iso = `${target.getFullYear()}-${String(target.getMonth() + 1).padStart(2, "0")}-${String(target.getDate()).padStart(2, "0")}`;
+  $(w, "#planDate").value = iso;
+  $(w, "#planDate").dispatchEvent(new w.Event("change", { bubbles: true }));
+  check("plan günlük yeni kart hesaplıyor", /günde \d+ yeni kart/.test($(w, "#planOut").textContent), $(w, "#planOut").textContent);
+  check("plan uygulama düğmesi görünür", $(w, "#planApply").hidden === false);
+
+  $(w, "#planApply").click();
+  const applied = await savedState(w);
+  check("plan günlük limite yazıldı", applied.settings.newPerDay === 5, String(applied.settings.newPerDay));
+  check("plan ayar kaydırıcısına yansıdı", $(w, "#newPerDayVal").textContent === "5", $(w, "#newPerDayVal").textContent);
+
+  $(w, '.tab[data-view="study"]').click();
+  $(w, "#revealBtn").click();
+  $(w, '[data-grade="good"]').click();
+  const graded = await savedState(w);
+  const card = graded.cards[`${fi}|fi-tr`];
+  check("gölge motor kartı işledi", Boolean(card.fsrs) && card.fsrs.s > 0 && card.fsrs.d >= 1 && card.fsrs.d <= 10, JSON.stringify(card.fsrs));
+  check("SM-2 aralığı bozulmadı", card.interval === 0 && card.state === "learning", `${card.state}/${card.interval}`);
+
+  $(w, "#undoBtn").click();
+  const undone = await savedState(w);
+  check("geri alma gölgeyi de siliyor", undone.cards[`${fi}|fi-tr`].fsrs === undefined);
+  await close(dom);
+}
+
 const tests = [
   testAlternativeTranslation,
   testExtraRepeatCard,
@@ -713,6 +794,8 @@ const tests = [
   testCustomWords,
   testMistakeReport,
   testFocusFromReport,
+  testFsrsMath,
+  testEngineCompareAndPlanner,
 ];
 
 for (const test of tests) {

@@ -40,7 +40,7 @@ export function defaultState() {
     totals: { reviews: 0, correct: 0 },
     typing: { attempts: 0, correct: 0, tolerated: 0, order: 0, letter: 0, word: 0, recent: [], byCard: {} },
     // Sözlük görünümünde seçilen kategori ve kapsam sonraki açılışta korunur.
-    ui: { view: "study", dictCat: "all", dictScope: "all", dictSearch: "" },
+    ui: { view: "study", dictCat: "all", dictScope: "all", dictSearch: "", planDate: "" },
   };
 }
 

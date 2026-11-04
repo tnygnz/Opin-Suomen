@@ -67,6 +67,12 @@ kapalıyken gramer kartları sıraya girmemelidir.
   Desen ya da kategori satırına dokunmak yalnız o kartları çalıştıran bir odak kurar; çalışma ekranındaki
   odak etiketiyle kaldırılır ve oturum bitince kendiliğinden kaybolur. Odak bitince boş ekran, o odakta verilen
   cevap sayısını ve doğruluk yüzdesini özetler; geri alınan cevap özetten de düşer.
+- **FSRS-5 karşılaştırması ve sınav planı:** Kartlar SM-2 ile zamanlanmaya devam eder; her cevap aynı anda
+  FSRS-5'in bellek modelinde (kararlılık/zorluk) de işlenir ve kayıtlı aralıklara dokunulmaz. İstatistik'te
+  aynı kartlar için 30 günlük tekrar sayısı (SM-2 / FSRS), fark yüzdesi, ortalama aralık ve geçmiş
+  cevaplardan kalibre edilen kişisel parametreler (hedef hatırlama, başlangıç hızı) görünür. "Sınav planı"
+  hedef tarihe kadar gereken günlük yeni kart ve tekrar yükünü hesaplar; tek dokunuşla günlük limite yazar.
+  Motor geçişi, gölge farkı oturana kadar yapılmaz.
 - **Yazma modu:** Kelime ve boşluk kartlarında cevap klavyeyle yazılır ve toleranslı karşılaştırılır:
   büyük/küçük harf, noktalama ve ä/ö/å ayrımı yok sayılır, 5+ harfli cevaplarda tek harflik yazım hatası kabul edilir.
   Kelime kartlarında `/` ile ayrılmış alternatif çevirilerden herhangi biri kabul edilir (ör. `erkek` ya da

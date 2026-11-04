@@ -240,6 +240,40 @@
 
         <div class="panel">
           <div class="panel-head">
+            <h2>Zamanlayıcı karşılaştırması</h2>
+            <span class="muted" id="engineCompareNote">veri bekleniyor</span>
+          </div>
+          <p class="muted small">
+            Kartlar SM-2 ile zamanlanmaya devam ediyor; FSRS-5 her cevabı aynı anda kendi belleğinde işleyip
+            aynı kartlarla karşılaştırma üretiyor. Kayıtlı aralıklar değişmiyor: geçiş, fark oturana kadar
+            yapılmıyor.
+          </p>
+          <div class="mini-stats">
+            <div class="mini"><small>30 günde tekrar · SM-2</small><b id="cmpSm2">—</b></div>
+            <div class="mini"><small>30 günde tekrar · FSRS</small><b id="cmpFsrs">—</b></div>
+            <div class="mini"><small>Fark</small><b id="cmpDiff">—</b></div>
+            <div class="mini"><small>Ortalama aralık</small><b id="cmpInterval">—</b></div>
+          </div>
+          <p class="muted small" id="cmpParams"></p>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Sınav planı</h2>
+            <span class="muted" id="planNote">hedefe göre günlük yük</span>
+          </div>
+          <label class="field">
+            <span>Hedef tarih</span>
+            <input id="planDate" type="date" />
+          </label>
+          <p class="muted small" id="planOut">Gelecekte bir tarih seç: kalan kartları yetiştirmek için günde kaç yeni kart gerektiğini hesaplar.</p>
+          <div class="btn-row">
+            <button class="btn ghost" id="planApply" type="button" hidden>Günlük yeni kartı ayarla</button>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
             <h2>Sistematik hata raporu</h2>
             <span class="muted" id="reportSummary">veri bekleniyor</span>
           </div>
@@ -366,7 +400,7 @@
             <div><dt>Başlama eylemi</dt><dd>com.ichi2.anki.IntentHandler</dd></div>
             <div><dt>Hedef / min SDK</dt><dd>36 / 24</dd></div>
             <div><dt>İmza SHA-1</dt><dd><code>f24e06a3657b190a12671100402df32d7b9b3d36</code></dd></div>
-            <div><dt>Algoritma</dt><dd>SM-2 ailesi · 1 dk / 10 dk öğrenme adımları</dd></div>
+            <div><dt>Algoritma</dt><dd>SM-2 ailesi · 1 dk / 10 dk adımlar · FSRS-5 gölge karşılaştırması</dd></div>
             <div><dt>Veri konumu</dt><dd>tarayıcı <code>localStorage</code> · ağ isteği yok</dd></div>
           </dl>
         </div>

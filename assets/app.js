@@ -3,6 +3,7 @@ import { VOCAB, CATEGORIES, DIRS, LEVELS, CASES, caseOfDir, formDir, PERSONS, VE
 import {
   schedule, previewIntervals, cardStatusLabel, isMature, formatInterval, newCard,
 } from "./srs.js";
+import * as fsrs from "./fsrs.js";
 import * as store from "./store.js";
 
 const $ = (sel) => document.querySelector(sel);
@@ -1068,6 +1069,109 @@ function reveal() {
   renderStudy();
 }
 
+/* ── FSRS-5 gölge motoru ───────────────────────────
+ * Kartlar SM-2 ile zamanlanır; FSRS her cevabı ayrıca kendi belleğinde işler.
+ * Böylece geçiş kararı verilene kadar kayıtlı aralıklar hiç değişmez. */
+function fsrsParams() {
+  return fsrs.fitParams(state.totals);
+}
+
+/** Kartın FSRS bellek durumu; yoksa mevcut SM-2 aralığından tohumlanır. */
+function shadowOf(card) {
+  return card.fsrs || fsrs.seedFromSm2(card);
+}
+
+function clampNewPerDay(n) {
+  return Math.min(60, Math.max(5, Math.round(n / 5) * 5));
+}
+
+/** Aynı kartlar için iki motorun dönem içi tekrar yükünü karşılaştırır. */
+function forecastReviews(cards, horizonDays, now) {
+  const params = fsrsParams();
+  const end = now + horizonDays * fsrs.DAY;
+  let sm2 = 0;
+  for (const card of cards) {
+    let c = { ...card };
+    let t = Math.max(now, c.due || now);
+    let guard = 0;
+    while (t <= end && guard < 120) {
+      sm2 += 1;
+      c = schedule(c, "good", t);
+      t = c.due;
+      guard += 1;
+    }
+  }
+  const fsrsCount = fsrs.forecast(cards.map(shadowOf), horizonDays, {
+    now,
+    retention: params.retention,
+    speed: params.speed,
+  });
+  return { sm2, fsrsCount, params };
+}
+
+function renderEngineCompare(now = Date.now()) {
+  const note = $("#engineCompareNote");
+  const cards = activeJobs()
+    .map((j) => j.card)
+    .filter((c) => c.state !== "new" && !c.retired);
+  if (!cards.length) {
+    $("#cmpSm2").textContent = "—";
+    $("#cmpFsrs").textContent = "—";
+    $("#cmpDiff").textContent = "—";
+    $("#cmpInterval").textContent = "—";
+    $("#cmpParams").textContent = "Karşılaştırma için en az bir tekrar edilmiş kart gerekir.";
+    note.textContent = "veri bekleniyor";
+    return;
+  }
+  const { sm2, fsrsCount, params } = forecastReviews(cards, 30, now);
+  const diff = sm2 ? Math.round((1 - fsrsCount / sm2) * 100) : 0;
+  const avgSm2 = Math.round(cards.reduce((s, c) => s + (c.interval || 0), 0) / cards.length);
+  const avgFsrs = Math.round(
+    cards.reduce((s, c) => s + fsrs.intervalDays(shadowOf(c).s, params.retention), 0) / cards.length
+  );
+  $("#cmpSm2").textContent = sm2;
+  $("#cmpFsrs").textContent = fsrsCount;
+  $("#cmpDiff").textContent = `${diff > 0 ? "−" : diff < 0 ? "+" : ""}${Math.abs(diff)}%`;
+  $("#cmpDiff").title = "FSRS-5 aynı 30 günde ne kadar daha az (eksi) ya da çok (artı) tekrar istiyor";
+  $("#cmpInterval").textContent = `${avgSm2} / ${avgFsrs} gün`;
+  $("#cmpInterval").title = "Ortalama aralık: SM-2 / FSRS-5";
+  $("#cmpParams").textContent =
+    `Kişisel parametreler: hedef hatırlama %${Math.round(params.retention * 100)} · ` +
+    `başlangıç hızı ${params.speed.toFixed(2).replace(".", ",")}× · ${params.reviews} cevaptan kalibre`;
+  note.textContent = `${cards.length} tekrar kartı · 30 gün`;
+}
+
+function renderPlanner(now = Date.now()) {
+  const input = $("#planDate");
+  if (state.ui.planDate && input.value !== state.ui.planDate) input.value = state.ui.planDate;
+  const out = $("#planOut");
+  const apply = $("#planApply");
+  const target = input.value ? new Date(`${input.value}T23:59:59`) : null;
+  const days = target ? Math.ceil((target.getTime() - now) / fsrs.DAY) : 0;
+  if (!target || Number.isNaN(days) || days <= 0) {
+    out.textContent =
+      "Gelecekte bir tarih seç: kalan kartları yetiştirmek için günde kaç yeni kart gerektiğini hesaplar.";
+    apply.hidden = true;
+    return;
+  }
+  const jobs = activeJobs();
+  const newLeft = jobs.filter((j) => j.card.state === "new").length;
+  const reviewCards = jobs.map((j) => j.card).filter((c) => c.state !== "new" && !c.retired);
+  const params = fsrsParams();
+  const reviews = fsrs.forecast(reviewCards.map(shadowOf), days, {
+    now,
+    retention: params.retention,
+    speed: params.speed,
+  });
+  const plan = fsrs.plan({ newLeft, days, reviews });
+  out.textContent = newLeft
+    ? `${plan.days} günde ${newLeft} yeni kart → günde ${plan.perDayNew} yeni kart. Tahmini günde ≈ ${plan.perDayReviews} tekrar (FSRS-5).`
+    : `Yeni kart kalmadı; ${plan.days} gün için günde ≈ ${plan.perDayReviews} tekrar yeterli.`;
+  apply.hidden = newLeft === 0;
+  apply.dataset.perDay = String(clampNewPerDay(plan.perDayNew));
+  apply.textContent = `Günlük yeni kartı ${apply.dataset.perDay} yap`;
+}
+
 function gradeCurrent(g) {
   if (!current || !revealed) return;
   const card = state.cards[current.key];
@@ -1097,7 +1201,10 @@ function gradeCurrent(g) {
       card.due = Date.now() + (g === "again" ? 1 : 5) * 60 * 1000;
     }
   } else {
-    state.cards[current.key] = schedule(card, g);
+    const next = schedule(card, g);
+    // FSRS-5 gölge motoru: kuyruğa dokunmadan aynı cevabı kendi belleğinde işler.
+    next.fsrs = fsrs.updateCard(shadowOf(card), g, Date.now(), fsrsParams());
+    state.cards[current.key] = next;
   }
 
   const today = store.todayKey();
@@ -1322,6 +1429,10 @@ function renderStats() {
 
   // Sistematik hata raporu (mevcut ilerlemeden türetilir)
   renderMistakeReport();
+
+  // Zamanlayıcı karşılaştırması ve hedefe göre planlama
+  renderEngineCompare(now);
+  renderPlanner(now);
 
   // Kategori ilerlemesi
   const wrap = $("#catProgress");
@@ -1729,6 +1840,24 @@ function bindEvents() {
   });
 
   $("#focusPill").addEventListener("click", clearFocus);
+
+  $("#planDate").addEventListener("change", () => {
+    state.ui.planDate = $("#planDate").value;
+    store.saveState(state);
+    renderPlanner();
+  });
+
+  $("#planApply").addEventListener("click", () => {
+    const value = Number($("#planApply").dataset.perDay || 0);
+    if (!value) return;
+    state.settings.newPerDay = value;
+    $("#newPerDay").value = String(value);
+    $("#newPerDayVal").textContent = value;
+    store.saveState(state);
+    toast(`Günlük yeni kart ${value} olarak ayarlandı.`);
+    renderStudy();
+    renderStats();
+  });
 
   $("#revealBtn").addEventListener("click", reveal);
 

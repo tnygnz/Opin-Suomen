@@ -782,6 +782,16 @@ input[type="checkbox"] { width: 17px; height: 17px; accent-color: var(--brand); 
   .stat-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
+/* Sınav planındaki tarih alanı diğer alanlarla aynı görünsün */
+#planDate {
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  color: var(--ink);
+  font: inherit;
+}
+
 /* Rapordaki desen/kategori satırları odaklı çalışma kısayoludur */
 .cat-row.is-clickable { cursor: pointer; border-radius: 8px; }
 .cat-row.is-clickable:hover,
