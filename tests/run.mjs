@@ -11,7 +11,7 @@ const indexPath = path.join(root, "index.html");
 const assetUrl = (name) => pathToFileURL(path.join(root, "assets", name)).href;
 
 const store = await import(assetUrl("store.js"));
-const { VOCAB, CASES, FORMS, PERSONS, VERB_TYPES, CONJ } = await import(assetUrl("data.js"));
+const { VOCAB, CASES, FORMS, PERSONS, VERB_TYPES, CONJ, CATEGORIES } = await import(assetUrl("data.js"));
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -582,17 +582,20 @@ async function testMistakeReport() {
   const person = Object.keys(PERSONS)[0];
   const caseKey = Object.keys(CASES)[2]; // illatiivi
   const word = VOCAB[0];
+  const catWord = VOCAB.find((v) => v.cat !== word.cat);
+  const catKey = catWord.cat;
 
   Object.assign(st.cards[`${formFi}|form:${caseKey}`], { lapses: 4, reps: 9 });
   Object.assign(st.cards[`${conjFi}|conj:${person}`], { lapses: 2, reps: 6 });
   Object.assign(st.cards[`${word.fi}|fi-tr`], { lapses: 7, reps: 12 });
+  Object.assign(st.cards[`${catWord.fi}|fi-tr`], { lapses: 5, reps: 8 });
   st.typing.recent = [{ fi: word.fi, given: "aiti", answer: "äiti", type: "letter", at: Date.now() }];
 
   const dom = await boot(st);
   const w = dom.window;
   $(w, '.tab[data-view="stats"]').click();
 
-  check("özet tekrar ve unutma sayısını veriyor", $(w, "#reportSummary").textContent.includes("13 unutma"), $(w, "#reportSummary").textContent);
+  check("özet tekrar ve unutma sayısını veriyor", $(w, "#reportSummary").textContent.includes("18 unutma"), $(w, "#reportSummary").textContent);
   check("en zayıf desen ipucu", $(w, "#reportHint").textContent.includes("En zayıf desen: Fince → Türkçe"), $(w, "#reportHint").textContent);
   const patternsText = $(w, "#reportPatterns").textContent;
   check("hâl eki deseni listede", patternsText.includes(CASES[caseKey].label), patternsText);
@@ -603,6 +606,34 @@ async function testMistakeReport() {
   check("en çok unutulan kelime ve çevirisi", wordsText.includes(word.fi) && wordsText.includes(word.tr), wordsText);
   check("kelimenin deseni gösteriliyor", wordsText.includes("Fince → Türkçe"), wordsText);
   check("harf deseni çıkarıldı", $(w, "#reportLetters").textContent.includes("ä"), $(w, "#reportLetters").textContent);
+
+  const catsText = $(w, "#reportCats").textContent;
+  check("zayıf kategori listeleniyor", catsText.includes(CATEGORIES[catKey].label), catsText);
+
+  // Kategori toplamı kartlardan bağımsız hesaplanıp satırla karşılaştırılır.
+  const expectedCats = new Map();
+  for (const [key, card] of Object.entries(st.cards)) {
+    if (!card.lapses) continue;
+    const fi = key.slice(0, key.indexOf("|"));
+    const vocab = VOCAB.find((v) => v.fi === fi);
+    if (!vocab) continue;
+    const row = expectedCats.get(vocab.cat) || { lapses: 0, words: new Set() };
+    row.lapses += card.lapses;
+    row.words.add(fi);
+    expectedCats.set(vocab.cat, row);
+  }
+  const [topCat, topRow] = [...expectedCats.entries()].sort((a, b) => b[1].lapses - a[1].lapses)[0];
+  check(
+    "kategori satırı unutma/kelime sayısını doğru veriyor",
+    catsText.includes(`${topRow.lapses} / ${topRow.words.size} kelime`),
+    catsText
+  );
+  check(
+    "en zayıf kategori ilk sırada",
+    ($(w, "#reportCats .cat-name")?.textContent || "").includes(CATEGORIES[topCat].label),
+    $(w, "#reportCats .cat-name")?.textContent
+  );
+  check("kategori başlığı görünür", $(w, "#reportCatLabel").hidden === false);
   await close(dom);
 
   const fresh = await boot(seed());
@@ -611,6 +642,8 @@ async function testMistakeReport() {
   check("veri yokken rapor ipucu gösteriyor", $(w2, "#reportHint").textContent.includes("Rapor çalıştıkça"), $(w2, "#reportHint").textContent);
   check("boş durumda kelime listesi gizli", $(w2, "#reportWords").hidden === true);
   check("boş durumda desen satırı yok", $(w2, "#reportPatterns").textContent === "");
+  check("boş durumda kategori satırı yok", $(w2, "#reportCats").textContent === "");
+  check("boş durumda kategori başlığı gizli", $(w2, "#reportCatLabel").hidden === true);
   await close(fresh);
 }
 

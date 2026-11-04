@@ -1439,6 +1439,7 @@ function reportLetterRows() {
 
 function renderMistakeReport() {
   const { rows, lapses, reps } = reportPatternRows();
+  const byFi = new Map(VOCAB.map((v) => [v.fi, v]));
   const typing = state.typing || {};
   const typingErrors = (typing.letter || 0) + (typing.order || 0) + (typing.word || 0);
   const ranked = rows
@@ -1453,7 +1454,7 @@ function renderMistakeReport() {
   $("#reportHint").textContent = !reps && !typingErrors
     ? "Rapor çalıştıkça oluşur: tekrarlar ve yazma denemeleri biriktikçe zayıf desenler burada listelenir."
     : weak
-      ? `En zayıf desen: ${weak.label} — ${weak.lapses} unutma / ${weak.cards} kart. Aşağıdaki listeler bu deseni ve en çok takıldığın kelimeleri gösterir.`
+      ? `En zayıf desen: ${weak.label} — ${weak.lapses} unutma / ${weak.cards} kart. Aşağıdaki listeler bu deseni, en çok takıldığın kelimeleri ve zayıf kategorileri gösterir.`
       : "Unutulan kart yok; yazmada sürekli düşen harfler aşağıda.";
 
   const patterns = $("#reportPatterns");
@@ -1478,6 +1479,46 @@ function renderMistakeReport() {
     row.append(name, bar, num);
     patterns.append(row);
   });
+  $("#reportPatternLabel").hidden = ranked.length === 0;
+
+  // Zayıf kategoriler: unutmaların kelime gruplarına dağılımı.
+  const cats = new Map();
+  for (const [key, card] of Object.entries(state.cards)) {
+    if (!card.lapses) continue;
+    const vocab = byFi.get(key.slice(0, key.indexOf("|")));
+    if (!vocab) continue;
+    const row = cats.get(vocab.cat) || { cat: vocab.cat, lapses: 0, words: new Set() };
+    row.lapses += card.lapses;
+    row.words.add(vocab.fi);
+    cats.set(vocab.cat, row);
+  }
+  const rankedCats = [...cats.values()]
+    .sort((a, b) => b.lapses - a.lapses || b.words.size - a.words.size)
+    .slice(0, 5);
+  const catWrap = $("#reportCats");
+  catWrap.textContent = "";
+  $("#reportCatLabel").hidden = rankedCats.length === 0;
+  const maxCat = Math.max(1, ...rankedCats.map((c) => c.lapses));
+  rankedCats.forEach((c) => {
+    const meta = CATEGORIES[c.cat] || { icon: "•", label: c.cat };
+    const row = document.createElement("div");
+    row.className = "cat-row";
+    const name = document.createElement("span");
+    name.className = "cat-name";
+    name.textContent = `${meta.icon} ${meta.label}`;
+    name.title = `${c.lapses} unutma · ${c.words.size} kelime`;
+    const bar = document.createElement("div");
+    bar.className = "cat-bar";
+    const fill = document.createElement("span");
+    fill.style.width = `${Math.round((c.lapses / maxCat) * 100)}%`;
+    fill.style.background = "linear-gradient(90deg, #e0705f, #e0a94b)";
+    bar.append(fill);
+    const num = document.createElement("span");
+    num.className = "cat-num";
+    num.textContent = `${c.lapses} / ${c.words.size} kelime`;
+    row.append(name, bar, num);
+    catWrap.append(row);
+  });
 
   const words = Object.entries(state.cards)
     .filter(([, card]) => (card.lapses || 0) > 0)
@@ -1493,7 +1534,7 @@ function renderMistakeReport() {
   wordWrap.textContent = "";
   wordWrap.hidden = words.length === 0;
   words.forEach(({ fi, dir, card }) => {
-    const vocab = VOCAB.find((v) => v.fi === fi);
+    const vocab = byFi.get(fi);
     const li = document.createElement("li");
     li.className = "error-item";
     const tag = document.createElement("span");
