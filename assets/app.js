@@ -2126,6 +2126,13 @@ function init() {
   applyTheme();
   $("#storageName").textContent = store.STORAGE_KEY;
 
+  // Kurulabilir + çevrimdışı: service worker yalnızca güvenli bağlamda kaydedilir.
+  if ("serviceWorker" in navigator && window.isSecureContext) {
+    navigator.serviceWorker
+      .register(new URL("../sw.js", import.meta.url))
+      .catch((err) => console.warn("Service worker kaydedilemedi:", err));
+  }
+
   // Yedekten ya da önceki oturumdan gelen kullanıcı kelimelerini sözlüğe ekle.
   applyCustomWords();
   store.ensureCards(state);

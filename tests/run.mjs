@@ -1,7 +1,8 @@
 /* Yazma modu ve ek tekrar mantığı için kalıcı testler (jsdom).
  * Çalıştırma: npm test
  */
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
+import { createContext, runInContext } from "node:vm";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { JSDOM } from "jsdom";
@@ -817,6 +818,105 @@ async function testEngineCompareAndPlanner() {
   await close(dom2);
 }
 
+/* ── 18. PWA: manifest, ikonlar, çevrimdışı ─────── */
+async function testPwaOffline() {
+  console.log("\n18) PWA: manifest, ikonlar ve çevrimdışı service worker");
+
+  const manifest = JSON.parse(readFileSync(path.join(root, "manifest.json"), "utf8"));
+  check("manifest ad ve kısa ad veriyor", Boolean(manifest.name) && Boolean(manifest.short_name));
+  check("manifest kurulabilir modda", manifest.display === "standalone");
+  check("manifest kapsamı ve başlangıcı kökte", manifest.start_url === "./" && manifest.scope === "./");
+  check(
+    "manifest 192 ve 512 simge içeriyor",
+    manifest.icons.some((i) => i.sizes === "192x192") && manifest.icons.some((i) => i.sizes === "512x512")
+  );
+  check(
+    "simge dosyaları gerçekten var",
+    manifest.icons.every((i) => existsSync(path.join(root, i.src))),
+    manifest.icons.map((i) => i.src).join(", ")
+  );
+
+  const pngSize = (file) => {
+    const buf = readFileSync(path.join(root, file));
+    return { w: buf.readUInt32BE(16), h: buf.readUInt32BE(20) };
+  };
+  const pngs = [...new Set(manifest.icons.filter((i) => i.type === "image/png").map((i) => i.src))];
+  for (const src of pngs) {
+    const expected = Number(manifest.icons.find((i) => i.src === src).sizes.split("x")[0]);
+    const { w, h } = pngSize(src);
+    check(`${src} ${expected}px kare`, w === expected && h === expected, `${w}x${h}`);
+  }
+
+  const html = readFileSync(indexPath, "utf8");
+  check("sayfa manifeste bağlanıyor", /<link rel="manifest" href="manifest.json"/.test(html));
+  check(
+    "iOS simgesi ve tam ekran etiketi var",
+    html.includes("apple-touch-icon") && html.includes("apple-mobile-web-app-capable")
+  );
+  check("uygulama service worker kaydediyor", /serviceWorker[\s\S]{0,80}register\(/.test(readFileSync(path.join(root, "assets", "app.js"), "utf8")));
+
+  const swPath = path.join(root, "sw.js");
+  check("service worker kökte duruyor", existsSync(swPath));
+  const swSource = readFileSync(swPath, "utf8");
+  const coreBlock = swSource.match(/const CORE = \[([\s\S]*?)\];/);
+  const core = coreBlock ? coreBlock[1].match(/"([^"]+)"/g).map((s) => s.slice(1, -1)) : [];
+  check("önbellek listesi kabuğu içeriyor", ["./", "index.html", "assets/app.js", "assets/fsrs.js"].every((f) => core.includes(f)));
+  const missing = core.filter((file) => file !== "./" && !existsSync(path.join(root, file)));
+  check("önbellekteki her dosya diskte var", missing.length === 0, missing.join(", "));
+
+  // Fetch mantığı: sahte Cache API ile çevrimdışı senaryolar.
+  const handlers = {};
+  const cacheStore = new Map([
+    ["https://example.test/assets/app.js", "cached-app-js"],
+    ["index.html", "cached-index"],
+  ]);
+  const fakeCache = {
+    addAll: async (files) => files.forEach((f) => cacheStore.set(f, `cached:${f}`)),
+    put: async (req, res) => cacheStore.set(typeof req === "string" ? req : req.url, res),
+    match: async (req) => cacheStore.get(typeof req === "string" ? req : req.url),
+  };
+  const sandbox = {
+    self: {
+      location: { origin: "https://example.test" },
+      addEventListener: (type, fn) => { handlers[type] = fn; },
+      skipWaiting: async () => {},
+      clients: { claim: async () => {} },
+    },
+    caches: {
+      open: async () => fakeCache,
+      keys: async () => ["suomi-tr-v1", "eski-sürüm"],
+      delete: async () => true,
+      match: fakeCache.match,
+    },
+    fetch: async () => { throw new Error("çevrimdışı"); },
+    Response: class {},
+    URL,
+    Promise,
+    console,
+  };
+  createContext(sandbox);
+  runInContext(swSource, sandbox);
+  check("service worker fetch dinliyor", typeof handlers.fetch === "function");
+
+  let responded = null;
+  handlers.fetch({
+    request: { method: "GET", mode: "no-cors", url: "https://example.test/assets/app.js" },
+    respondWith: (p) => { responded = p; },
+  });
+  check("önbellekteki varlık ağ olmadan dönüyor", (await responded) === "cached-app-js", String(await responded));
+
+  responded = null;
+  handlers.fetch({
+    request: { method: "GET", mode: "navigate", url: "https://example.test/suomi-tr-app/" },
+    respondWith: (p) => { responded = p; },
+  });
+  check("ağ yokken gezinme kabukla açılıyor", (await responded) === "cached-index", String(await responded));
+
+  responded = null;
+  handlers.fetch({ request: { method: "POST", mode: "cors", url: "https://example.test/api" }, respondWith: (p) => { responded = p; } });
+  check("GET dışı istekler önbelleğe alınmıyor", responded === null);
+}
+
 const tests = [
   testAlternativeTranslation,
   testExtraRepeatCard,
@@ -835,6 +935,7 @@ const tests = [
   testFocusFromReport,
   testFsrsMath,
   testEngineCompareAndPlanner,
+  testPwaOffline,
 ];
 
 for (const test of tests) {
