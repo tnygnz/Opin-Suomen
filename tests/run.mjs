@@ -670,8 +670,21 @@ async function testFocusFromReport() {
   check("odaktaki kart soruluyor", $(w, "#fcState").textContent === CASES[caseKey].label, $(w, "#fcState").textContent);
   check("odak sayacı yalnız odak kartını sayıyor", $(w, "#cntNew").textContent === "1", $(w, "#cntNew").textContent);
 
+  $(w, "#revealBtn").click();
+  $(w, '[data-grade="again"]').click();
+  const focusLine = $(w, "#emptySummary");
+  check("odak özeti cevap sayısını veriyor", focusLine.hidden === false && focusLine.textContent.includes("1 cevap"), focusLine.textContent);
+  check("odak özeti doğruluk yüzdesini veriyor", focusLine.textContent.includes("%0"), focusLine.textContent);
+
+  $(w, "#undoBtn").click();
+  check("geri alınca odak özeti sıfırlanıyor", $(w, "#emptySummary").hidden === true, $(w, "#emptySummary").textContent);
+
+  $(w, '[data-grade="good"]').click();
+  check("doğru cevap özeti %100 yapıyor", $(w, "#emptySummary").textContent.includes("%100"), $(w, "#emptySummary").textContent);
+
   $(w, "#focusPill").click();
   check("etiketle odak kaldırılıyor", $(w, "#focusPill").hidden === true, $(w, "#focusPill").textContent);
+  check("odak kalkınca özet gizleniyor", $(w, "#emptySummary").hidden === true, $(w, "#emptySummary").textContent);
   check("odak kalkınca normal boş duruma dönüldü", $(w, "#emptyTitle").textContent !== "Odakta kart kalmadı", $(w, "#emptyTitle").textContent);
 
   $(w, '.tab[data-view="stats"]').click();

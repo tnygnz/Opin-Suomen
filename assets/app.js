@@ -18,6 +18,7 @@ let speaking = "speechSynthesis" in window;
 let clozeChecked = null;     // { ok, given, skipped } — yazma modu sonucu
 let clozeFocusKey = null;    // odaklanılan kart anahtarı
 let focusFilter = null;      // rapordan kurulan oturum odağı: { kind, key, label }
+let focusSummary = null;     // odak oturumundaki cevaplar: { answered, correct }
 
 /* ── Yardımcılar ─────────────────────────────────── */
 function dirsActive() {
@@ -319,6 +320,7 @@ function focusMatches(job) {
 
 function setFocus(next) {
   focusFilter = next;
+  focusSummary = { answered: 0, correct: 0 };
   current = null;
   revealed = false;
   clozeChecked = null;
@@ -331,6 +333,7 @@ function setFocus(next) {
 function clearFocus() {
   if (!focusFilter) return;
   focusFilter = null;
+  focusSummary = null;
   current = null;
   revealed = false;
   clozeChecked = null;
@@ -791,6 +794,7 @@ function renderStudy() {
   const backLang = kind === "fi-tr" ? "tr" : "fi";
 
   emptyEl.hidden = true;
+  $("#emptySummary").hidden = true;
   cardEl.hidden = false;
   // Yazma alanı görünürken başlık ile giriş alanı arasındaki aşırı boşluk kapatılır.
   cardEl.classList.toggle("is-typing", typing && !revealed);
@@ -1011,6 +1015,14 @@ function showEmpty() {
   const title = $("#emptyTitle");
   const text = $("#emptyText");
 
+  const summaryEl = $("#emptySummary");
+  const focusLine =
+    focusFilter && focusSummary && focusSummary.answered
+      ? `Bu odakta ${focusSummary.answered} cevap · %${Math.round((focusSummary.correct / focusSummary.answered) * 100)} doğru`
+      : "";
+  summaryEl.textContent = focusLine;
+  summaryEl.hidden = !focusLine;
+
   if (focusFilter) {
     emptyEmoji.textContent = "🎯";
     title.textContent = "Odakta kart kalmadı";
@@ -1070,6 +1082,7 @@ function gradeCurrent(g) {
     daily: { ...state.daily },
     history: JSON.parse(JSON.stringify(state.history)),
     totals: { ...state.totals },
+    focus: focusSummary ? { ...focusSummary } : null,
   };
 
   if (current.dir === "extra") {
@@ -1103,6 +1116,10 @@ function gradeCurrent(g) {
   state.totals.reviews += 1;
   if (ok) state.totals.correct += 1;
 
+  if (focusSummary) {
+    focusSummary.answered += 1;
+    if (ok) focusSummary.correct += 1;
+  }
   sessionAnswered += 1;
   syncExtraCards();
   store.saveState(state);
@@ -1117,11 +1134,12 @@ function gradeCurrent(g) {
 
 function undo() {
   if (!undoSnapshot) return;
-  const { key, id, dir, prevCard, daily, history, totals } = undoSnapshot;
+  const { key, id, dir, prevCard, daily, history, totals, focus } = undoSnapshot;
   state.cards[key] = prevCard;
   state.daily = daily;
   state.history = history;
   state.totals = totals;
+  focusSummary = focus ? { ...focus } : null;
   sessionAnswered = Math.max(0, sessionAnswered - 1);
   undoSnapshot = null;
   $("#undoBtn").disabled = true;

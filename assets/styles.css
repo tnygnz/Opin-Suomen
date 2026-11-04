@@ -429,6 +429,7 @@ kbd {
 .empty-card h2 { margin: 0 0 6px; font-size: 22px; letter-spacing: -.02em; }
 .empty-card p { margin: 0 auto 18px; color: var(--muted); max-width: 44ch; font-size: 14.5px; }
 .empty-actions { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+.empty-summary { margin: -6px auto 18px !important; color: var(--ink) !important; font-weight: 600; font-variant-numeric: tabular-nums; }
 
 /* ── Butonlar ────────────────────────────────────── */
 .actions { margin-top: 16px; }
