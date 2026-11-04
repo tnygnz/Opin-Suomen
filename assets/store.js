@@ -39,7 +39,8 @@ export function defaultState() {
     history: {},
     totals: { reviews: 0, correct: 0 },
     typing: { attempts: 0, correct: 0, tolerated: 0, order: 0, letter: 0, word: 0, recent: [], byCard: {} },
-    ui: { view: "study" },
+    // Sözlük görünümünde seçilen kategori ve kapsam sonraki açılışta korunur.
+    ui: { view: "study", dictCat: "all", dictScope: "all" },
   };
 }
 

@@ -551,7 +551,23 @@ async function testCustomWords() {
     $(w, "#wordList .empty-hint")?.textContent.includes("Henüz kendi kelimeni"),
     $(w, "#wordList").textContent.trim()
   );
+
+  $(w, "#dictCat").value = "yemek";
+  $(w, "#dictCat").dispatchEvent(new w.Event("change", { bubbles: true }));
+  await wait(260);
+  const persisted = JSON.parse(w.localStorage.getItem(store.STORAGE_KEY));
+  check(
+    "kapsam ve kategori kaydedildi",
+    persisted.ui?.dictScope === "custom" && persisted.ui?.dictCat === "yemek",
+    JSON.stringify(persisted.ui)
+  );
   await close(dom);
+
+  const again = await boot(persisted);
+  const w2 = again.window;
+  check("yeniden açılışta kategori seçili", $(w2, "#dictCat").value === "yemek", $(w2, "#dictCat").value);
+  check("yeniden açılışta kapsam seçili", $(w2, "#dictScope").value === "custom", $(w2, "#dictScope").value);
+  await close(again);
 }
 
 const tests = [

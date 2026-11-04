@@ -1481,8 +1481,16 @@ function bindEvents() {
   });
 
   $("#dictSearch").addEventListener("input", renderDictionary);
-  $("#dictCat").addEventListener("change", renderDictionary);
-  $("#dictScope").addEventListener("change", renderDictionary);
+  $("#dictCat").addEventListener("change", (e) => {
+    state.ui.dictCat = e.target.value;
+    store.saveState(state);
+    renderDictionary();
+  });
+  $("#dictScope").addEventListener("change", (e) => {
+    state.ui.dictScope = e.target.value;
+    store.saveState(state);
+    renderDictionary();
+  });
 
   $$("#dirSeg button").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -1648,6 +1656,21 @@ function bindEvents() {
   });
 }
 
+/* ── Sözlük filtreleri ───────────────────────────── */
+function pickOption(select, value, fallback = "all") {
+  return [...select.options].some((option) => option.value === value) ? value : fallback;
+}
+
+/** Kapsam/kategori seçimlerini kalıcı durumdan seçicilere uygular. */
+function restoreDictionaryFilters() {
+  const cat = $("#dictCat");
+  const scope = $("#dictScope");
+  cat.value = pickOption(cat, state.ui.dictCat);
+  scope.value = pickOption(scope, state.ui.dictScope);
+  state.ui.dictCat = cat.value;
+  state.ui.dictScope = scope.value;
+}
+
 /* ── Başlangıç ───────────────────────────────────── */
 function init() {
   applyTheme();
@@ -1673,6 +1696,8 @@ function init() {
     opt.textContent = `${meta.icon} ${meta.label}`;
     catSelect.append(opt);
   });
+
+  restoreDictionaryFilters();
 
   const wordCatSelect = $("#newWordCat");
   Object.entries(CATEGORIES).forEach(([key, meta]) => {
