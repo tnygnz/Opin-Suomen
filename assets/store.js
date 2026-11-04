@@ -1,5 +1,5 @@
 /* Yerel durum yönetimi: ayarlar, kart ilerlemesi, günlük istatistikler, yedekleme */
-import { VOCAB, DIRS } from "./data.js";
+import { VOCAB, DIRS, CASES, formDir } from "./data.js";
 import { newCard } from "./srs.js";
 
 // v2: kart anahtarları kelime sırasına değil kelimenin kendisine bağlı
@@ -25,6 +25,7 @@ export function defaultState() {
       ttsRate: 1,
       autoSpeak: false,
       cloze: true,
+      forms: true,
       typingWords: true,
       typingCloze: true,
       extraThreshold: 2,
@@ -52,6 +53,15 @@ export function ensureCards(state) {
     if (!vocab.cloze) return;
     const key = cardKey(vocab, "cloze");
     if (!state.cards[key]) state.cards[key] = newCard(vocab.fi, "cloze");
+  });
+  // Hâl eki kartları: yalnızca çekimi tanımlı kelimeler için, her durum ayrı kart.
+  VOCAB.forEach((vocab) => {
+    if (!vocab.forms) return;
+    for (const caseKey of Object.keys(CASES)) {
+      const dir = formDir(caseKey);
+      const key = cardKey(vocab, dir);
+      if (!state.cards[key]) state.cards[key] = newCard(vocab.fi, dir);
+    }
   });
 }
 

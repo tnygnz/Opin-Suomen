@@ -653,6 +653,135 @@ for (const v of VOCAB) {
   if (CLOZE[v.fi]) v.cloze = CLOZE[v.fi];
 }
 
+/* ── Hâl eki (case) kartları ──────────────────────────────
+ * Fince'de kelimeyi tanımak yetmiyor: cümlede kullanmak için hâl ekini
+ * üretmek gerekiyor. Üç temel durum: partitiivi, inessiivi (-ssa/-ssä),
+ * illatiivi (-Vn / -hVn). Biçimler elle yazıldı; yalnızca burada listelenen
+ * kelimeler için kart üretilir (CLOZE ile aynı yaklaşım).
+ */
+export const CASES = {
+  part: { label: "Partitiivi", suffix: "-a / -ä · -ta / -tä", hint: "belirtisiz nesne · sayıdan sonra · belli olmayan miktar" },
+  ines: { label: "İnessiivi", suffix: "-ssa / -ssä", hint: "nerede? bir şeyin içinde" },
+  ill:  { label: "İllatiivi", suffix: "-Vn / -hVn", hint: "nereye? bir şeyin içine" },
+};
+
+export const FORM_PREFIX = "form:";
+
+/** "form:ines" gibi bir yön adından hâl eki anahtarını çıkarır. */
+export function caseOfDir(dir) {
+  return typeof dir === "string" && dir.startsWith(FORM_PREFIX) ? dir.slice(FORM_PREFIX.length) : null;
+}
+
+export function formDir(caseKey) {
+  return `${FORM_PREFIX}${caseKey}`;
+}
+
+export const FORMS = {
+  aamu: { part: "aamua", ines: "aamussa", ill: "aamuun" },
+  apteekki: { part: "apteekkia", ines: "apteekissa", ill: "apteekkiin" },
+  aurinko: { part: "aurinkoa", ines: "auringossa", ill: "aurinkoon" },
+  auto: { part: "autoa", ines: "autossa", ill: "autoon" },
+  elokuva: { part: "elokuvaa", ines: "elokuvassa", ill: "elokuvaan" },
+  hedelmä: { part: "hedelmää", ines: "hedelmässä", ill: "hedelmään" },
+  hevonen: { part: "hevosta", ines: "hevosessa", ill: "hevoseen" },
+  hotelli: { part: "hotellia", ines: "hotellissa", ill: "hotelliin" },
+  huone: { part: "huonetta", ines: "huoneessa", ill: "huoneeseen" },
+  ikkuna: { part: "ikkunaa", ines: "ikkunassa", ill: "ikkunaan" },
+  isä: { part: "isää", ines: "isässä", ill: "isään" },
+  juna: { part: "junaa", ines: "junassa", ill: "junaan" },
+  juusto: { part: "juustoa", ines: "juustossa", ill: "juustoon" },
+  järvi: { part: "järveä", ines: "järvessä", ill: "järveen" },
+  kahvi: { part: "kahvia", ines: "kahvissa", ill: "kahviin" },
+  kahvila: { part: "kahvilaa", ines: "kahvilassa", ill: "kahvilaan" },
+  kala: { part: "kalaa", ines: "kalassa", ill: "kalaan" },
+  kana: { part: "kanaa", ines: "kanassa", ill: "kanaan" },
+  kananmuna: { part: "kananmunaa", ines: "kananmunassa", ill: "kananmunaan" },
+  kauppa: { part: "kauppaa", ines: "kaupassa", ill: "kauppaan" },
+  kaupunki: { part: "kaupunkia", ines: "kaupungissa", ill: "kaupunkiin" },
+  keittiö: { part: "keittiötä", ines: "keittiössä", ill: "keittiöön" },
+  kieli: { part: "kieltä", ines: "kielessä", ill: "kieleen" },
+  kirja: { part: "kirjaa", ines: "kirjassa", ill: "kirjaan" },
+  kirjasto: { part: "kirjastoa", ines: "kirjastossa", ill: "kirjastoon" },
+  kissa: { part: "kissaa", ines: "kissassa", ill: "kissaan" },
+  koira: { part: "koiraa", ines: "koirassa", ill: "koiraan" },
+  konsertti: { part: "konserttia", ines: "konsertissa", ill: "konserttiin" },
+  koti: { part: "kotia", ines: "kodissa", ill: "kotiin" },
+  koulu: { part: "koulua", ines: "koulussa", ill: "kouluun" },
+  kukka: { part: "kukkaa", ines: "kukassa", ill: "kukkaan" },
+  kuukausi: { part: "kuukautta", ines: "kuukaudessa", ill: "kuukauteen" },
+  kylpyhuone: { part: "kylpyhuonetta", ines: "kylpyhuoneessa", ill: "kylpyhuoneeseen" },
+  kylä: { part: "kylää", ines: "kylässä", ill: "kylään" },
+  kysymys: { part: "kysymystä", ines: "kysymyksessä", ill: "kysymykseen" },
+  käsi: { part: "kättä", ines: "kädessä", ill: "käteen" },
+  lapsi: { part: "lasta", ines: "lapsessa", ill: "lapseen" },
+  lautanen: { part: "lautasta", ines: "lautasessa", ill: "lautaseen" },
+  leipä: { part: "leipää", ines: "leivässä", ill: "leipään" },
+  lentokenttä: { part: "lentokenttää", ines: "lentokentässä", ill: "lentokenttään" },
+  lintu: { part: "lintua", ines: "linnussa", ill: "lintuun" },
+  lumi: { part: "lunta", ines: "lumessa", ill: "lumeen" },
+  lääke: { part: "lääkettä", ines: "lääkkeessä", ill: "lääkkeeseen" },
+  lääkäri: { part: "lääkäriä", ines: "lääkärissä", ill: "lääkäriin" },
+  maito: { part: "maitoa", ines: "maidossa", ill: "maitoon" },
+  meri: { part: "merta", ines: "meressä", ill: "mereen" },
+  metsä: { part: "metsää", ines: "metsässä", ill: "metsään" },
+  mies: { part: "miestä", ines: "miehessä", ill: "mieheen" },
+  musiikki: { part: "musiikkia", ines: "musiikissa", ill: "musiikkiin" },
+  naapuri: { part: "naapuria", ines: "naapurissa", ill: "naapuriin" },
+  olut: { part: "olutta", ines: "oluessa", ill: "olueeseen" },
+  omena: { part: "omenaa", ines: "omenassa", ill: "omenaan" },
+  ovi: { part: "ovea", ines: "ovessa", ill: "oveen" },
+  pankki: { part: "pankkia", ines: "pankissa", ill: "pankkiin" },
+  perhe: { part: "perhettä", ines: "perheessä", ill: "perheeseen" },
+  peruna: { part: "perunaa", ines: "perunassa", ill: "perunaan" },
+  poika: { part: "poikaa", ines: "pojassa", ill: "poikaan" },
+  posti: { part: "postia", ines: "postissa", ill: "postiin" },
+  puhelin: { part: "puhelinta", ines: "puhelimessa", ill: "puhelimeen" },
+  puu: { part: "puuta", ines: "puussa", ill: "puuhun" },
+  päivä: { part: "päivää", ines: "päivässä", ill: "päivään" },
+  pöytä: { part: "pöytää", ines: "pöydässä", ill: "pöytään" },
+  ranta: { part: "rantaa", ines: "rannassa", ill: "rantaan" },
+  ravintola: { part: "ravintolaa", ines: "ravintolassa", ill: "ravintolaan" },
+  riisi: { part: "riisiä", ines: "riisissä", ill: "riisiin" },
+  ruoka: { part: "ruokaa", ines: "ruoassa", ill: "ruokaan" },
+  saari: { part: "saarta", ines: "saaressa", ill: "saareen" },
+  sairaala: { part: "sairaalaa", ines: "sairaalassa", ill: "sairaalaan" },
+  sana: { part: "sanaa", ines: "sanassa", ill: "sanaan" },
+  satama: { part: "satamaa", ines: "satamassa", ill: "satamaan" },
+  serkku: { part: "serkkua", ines: "serkussa", ill: "serkkuun" },
+  setä: { part: "setää", ines: "sedässä", ill: "setään" },
+  sisko: { part: "siskoa", ines: "siskossa", ill: "siskoon" },
+  sokeri: { part: "sokeria", ines: "sokerissa", ill: "sokeriin" },
+  sukulainen: { part: "sukulaista", ines: "sukulaisessa", ill: "sukulaiseen" },
+  suola: { part: "suolaa", ines: "suolassa", ill: "suolaan" },
+  sänky: { part: "sänkyä", ines: "sängyssä", ill: "sänkyyn" },
+  sää: { part: "säätä", ines: "säässä", ill: "säähän" },
+  talo: { part: "taloa", ines: "talossa", ill: "taloon" },
+  tee: { part: "teetä", ines: "teessä", ill: "teehen" },
+  tie: { part: "tietä", ines: "tiessä", ill: "tiehen" },
+  tietokone: { part: "tietokonetta", ines: "tietokoneessa", ill: "tietokoneeseen" },
+  tomaatti: { part: "tomaattia", ines: "tomaatissa", ill: "tomaattiin" },
+  tuoli: { part: "tuolia", ines: "tuolissa", ill: "tuoliin" },
+  tuuli: { part: "tuulta", ines: "tuulessa", ill: "tuuleen" },
+  tyttö: { part: "tyttöä", ines: "tytössä", ill: "tyttöön" },
+  työ: { part: "työtä", ines: "työssä", ill: "työhön" },
+  täti: { part: "tätiä", ines: "tädissä", ill: "tätiin" },
+  vaimo: { part: "vaimoa", ines: "vaimossa", ill: "vaimoon" },
+  veli: { part: "veljeä", ines: "veljessä", ill: "veljeen" },
+  vesi: { part: "vettä", ines: "vedessä", ill: "veteen" },
+  viikko: { part: "viikkoa", ines: "viikossa", ill: "viikkoon" },
+  voi: { part: "voita", ines: "voissa", ill: "voihin" },
+  vuori: { part: "vuorta", ines: "vuoressa", ill: "vuoreen" },
+  vuosi: { part: "vuotta", ines: "vuodessa", ill: "vuoteen" },
+  ystävä: { part: "ystävää", ines: "ystävässä", ill: "ystävään" },
+  yö: { part: "yötä", ines: "yössä", ill: "yöhön" },
+  äiti: { part: "äitiä", ines: "äidissä", ill: "äitiin" },
+};
+
+// Çekimleri sözlük kayıtlarına iliştir (uygulama tek yerden okusun).
+for (const v of VOCAB) {
+  if (FORMS[v.fi]) v.forms = FORMS[v.fi];
+}
+
 export const DIRS = {
   "fi-tr": { label: "Fince → Türkçe", front: "fi", back: "tr", lang: "fi-FI" },
   "tr-fi": { label: "Türkçe → Fince", front: "tr", back: "fi", lang: "tr-TR" },

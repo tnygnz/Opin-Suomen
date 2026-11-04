@@ -1,5 +1,5 @@
 /* Suomi–Türkçe — uygulama mantığı */
-import { VOCAB, CATEGORIES, DIRS, LEVELS } from "./data.js";
+import { VOCAB, CATEGORIES, DIRS, LEVELS, CASES, caseOfDir, formDir } from "./data.js";
 import {
   schedule, previewIntervals, cardStatusLabel, isMature, formatInterval, newCard,
 } from "./srs.js";
@@ -44,6 +44,11 @@ function clozeEnabled() {
   return state.settings.cloze !== false;
 }
 
+/** Hâl eki (gramer) kartları açık mı? Varsayılan: açık. */
+function formsEnabled() {
+  return state.settings.forms !== false;
+}
+
 /** Aynı kalıpta bu kadar hata birikince otomatik ek tekrar kartı üretilir (ayarlardan 1–6). */
 function extraThreshold() {
   const raw = Number(state.settings.extraThreshold);
@@ -86,6 +91,12 @@ function extraCardKey(vocab, source) {
 /** Yazma modunda beklenen cevabı ve kabul edilen alternatifleri üretir. */
 function answerTarget(vocab, dir, source) {
   const kind = dir === "extra" ? (source || "cloze") : dir;
+  const caseKey = caseOfDir(kind);
+  if (caseKey) {
+    const answer = vocab.forms?.[caseKey];
+    if (!answer) return null;
+    return { kind, lang: "fi", text: answer, variants: [answer] };
+  }
   if (kind === "cloze") {
     if (!vocab.cloze) return null;
     return { kind, lang: "fi", text: vocab.cloze.answer, variants: [vocab.cloze.answer] };
@@ -118,6 +129,8 @@ function syncExtraCards(now = Date.now()) {
     const vocab = VOCAB.find((v) => v.fi === fi);
     if (!vocab) continue;
     if (source === "cloze" && !vocab.cloze) continue;
+    const caseKey = caseOfDir(source);
+    if (caseKey && !vocab.forms?.[caseKey]) continue;
     const key = extraCardKey(vocab, source);
     const card = state.cards[key];
     const pending = info.pending || 0;
@@ -158,6 +171,18 @@ function activeJobs() {
       if (card) jobs.push({ id, dir: "cloze", key, card, vocab });
     });
   }
+  // Hâl eki kartları: yön filtresinden bağımsız, yalnızca çekimi olan kelimeler.
+  if (formsEnabled()) {
+    VOCAB.forEach((vocab, id) => {
+      if (!vocab.forms || !matchesLevel(id)) return;
+      for (const caseKey of Object.keys(CASES)) {
+        const dir = formDir(caseKey);
+        const key = store.cardKey(vocab, dir);
+        const card = state.cards[key];
+        if (card) jobs.push({ id, dir, key, card, vocab, caseKey });
+      }
+    });
+  }
   // Ek tekrar kartları: kaynak türü neyse o biçimde gelir, yön filtresinden bağımsızdır.
   const indexByFi = new Map(VOCAB.map((v, i) => [v.fi, i]));
   for (const [key, card] of Object.entries(state.cards)) {
@@ -166,6 +191,8 @@ function activeJobs() {
     if (id === undefined || !matchesLevel(id)) continue;
     const source = card.source || "cloze";
     if (source === "cloze" && !clozeEnabled()) continue;
+    const caseKey = caseOfDir(source);
+    if (caseKey && !formsEnabled()) continue;
     jobs.push({ id, dir: "extra", key, card, vocab: VOCAB[id], source });
   }
   return jobs;
@@ -604,6 +631,8 @@ function renderStudy() {
   const extraSource = isExtra ? (card.source || "cloze") : null;
   const kind = isExtra ? extraSource : current.dir;
   const isCloze = kind === "cloze";
+  const caseKey = caseOfDir(kind);
+  const caseMeta = caseKey ? CASES[caseKey] : null;
   const typing = typingEnabledFor(current);
   const frontLang = isCloze || kind === "fi-tr" ? "fi" : "tr";
   const backLang = kind === "fi-tr" ? "tr" : "fi";
@@ -616,7 +645,9 @@ function renderStudy() {
   $("#fcCat").textContent = `${CATEGORIES[vocab.cat].icon} ${CATEGORIES[vocab.cat].label}`;
   $("#fcLevel").textContent = vocab.lvl;
   $("#fcLevel").title = LEVELS[vocab.lvl]?.label || vocab.lvl;
-  $("#fcState").textContent = isExtra ? "Ek tekrar" : cardStatusLabel(card);
+  $("#fcState").textContent = isExtra ? "Ek tekrar" : caseMeta ? caseMeta.label : cardStatusLabel(card);
+  if (caseMeta) $("#fcState").title = caseMeta.hint;
+  else $("#fcState").removeAttribute("title");
 
   const promptEl = $("#fcPrompt");
   const ex = $("#fcExample");
@@ -659,6 +690,20 @@ function renderStudy() {
       fullTr.textContent = ` ${vocab.ex[1]}`;
       ex.append(document.createElement("br"), full, fullTr);
     }
+  } else if (caseMeta) {
+    // Hâl eki kartı: anlamı Türkçe verilir, çekimli Fince biçim istenir.
+    promptEl.classList.remove("cloze");
+    promptEl.textContent = vocab.tr;
+    promptEl.setAttribute("lang", "tr");
+    answerEl.textContent = vocab.forms?.[caseKey] || "";
+    answerEl.setAttribute("lang", "fi");
+    const base = document.createElement("span");
+    base.className = "fi";
+    base.lang = "fi";
+    base.textContent = `${vocab.fi} ${caseMeta.suffix}`;
+    const caseHint = document.createElement("span");
+    caseHint.textContent = ` — ${caseMeta.hint}`;
+    ex.append(base, caseHint);
   } else {
     promptEl.classList.remove("cloze");
     const promptText = frontLang === "fi" ? vocab.fi : vocab.tr;
@@ -735,7 +780,11 @@ function renderStudy() {
     const input = $("#clozeInput");
     input.value = "";
     input.disabled = false;
-    input.placeholder = isCloze ? "Eksik ifadeyi yaz…" : backLang === "tr" ? "Türkçe karşılığı…" : "Fince karşılığı…";
+    input.placeholder = isCloze
+      ? "Eksik ifadeyi yaz…"
+      : caseMeta
+        ? "Hâl ekli biçimi yaz…"
+        : backLang === "tr" ? "Türkçe karşılığı…" : "Fince karşılığı…";
     if (clozeFocusKey !== current.key) {
       clozeFocusKey = current.key;
       requestAnimationFrame(() => $("#clozeInput")?.focus());
@@ -1128,7 +1177,12 @@ function renderTypingStats() {
   const threshold = extraThreshold();
   watches.slice(0, 6).forEach(([entryKey, info]) => {
     const [fi, source] = entryKey.split("|");
-    const sourceLabel = source === "cloze" ? "boşluk" : source === "fi-tr" ? "F→T" : "T→F";
+    const caseKey = caseOfDir(source);
+    const sourceLabel = source === "cloze"
+      ? "boşluk"
+      : caseKey
+        ? (CASES[caseKey]?.label || "hâl eki")
+        : source === "fi-tr" ? "F→T" : "T→F";
     const pending = info.pending || 0;
     const li = document.createElement("li");
     li.className = "error-item";
@@ -1181,6 +1235,7 @@ function renderSettings() {
   $("#ttsRateVal").textContent = `${Number(state.settings.ttsRate).toFixed(1).replace(".", ",")}×`;
   $("#autoSpeak").checked = Boolean(state.settings.autoSpeak);
   $("#clozeEnabled").checked = clozeEnabled();
+  $("#formsEnabled").checked = formsEnabled();
   $("#typingWordsEnabled").checked = typingSettingOn("words");
   $("#typingClozeEnabled").checked = typingSettingOn("cloze");
   $("#typingClozeEnabled").disabled = !clozeEnabled();
@@ -1240,7 +1295,10 @@ function bindEvents() {
   $("#speakPrompt").addEventListener("click", () => {
     if (!current) return;
     const v = VOCAB[current.id];
-    if (current.dir === "cloze" || current.dir === "extra") { speak(v.ex[0], "fi-FI"); return; }
+    const card = state.cards[current.key];
+    const kind = current.dir === "extra" ? (card?.source || "cloze") : current.dir;
+    if (kind === "cloze") { speak(v.ex[0], "fi-FI"); return; }
+    if (caseOfDir(kind)) { speak(v.tr, "tr-TR"); return; }
     const lang = current.dir === "fi-tr" ? "fi-FI" : "tr-TR";
     speak(current.dir === "fi-tr" ? v.fi : v.tr, lang);
   });
@@ -1248,7 +1306,10 @@ function bindEvents() {
   $("#speakAnswer").addEventListener("click", () => {
     if (!current) return;
     const v = VOCAB[current.id];
-    if (current.dir === "cloze" || current.dir === "extra") { speak(v.fi, "fi-FI"); return; }
+    const card = state.cards[current.key];
+    const kind = current.dir === "extra" ? (card?.source || "cloze") : current.dir;
+    if (kind === "cloze") { speak(v.fi, "fi-FI"); return; }
+    if (caseOfDir(kind)) { speak(answerTarget(v, current.dir, card?.source)?.text || v.fi, "fi-FI"); return; }
     const lang = current.dir === "fi-tr" ? "tr-TR" : "fi-FI";
     speak(current.dir === "fi-tr" ? v.tr : v.fi, lang);
   });
@@ -1310,6 +1371,14 @@ function bindEvents() {
     revealed = false;
     settingsChanged();
     toast(e.target.checked ? "Boşluk doldurma kartları açıldı." : "Boşluk doldurma kartları kapatıldı.");
+  });
+
+  $("#formsEnabled").addEventListener("change", (e) => {
+    state.settings.forms = e.target.checked;
+    current = null;
+    revealed = false;
+    settingsChanged();
+    toast(e.target.checked ? "Hâl eki kartları açıldı." : "Hâl eki kartları kapatıldı.");
   });
 
   $("#typingWordsEnabled").addEventListener("change", (e) => {

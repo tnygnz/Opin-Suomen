@@ -31,7 +31,9 @@ Testler; alternatif çevirinin kabulünü, hata eşiğinde `kelime|extra:<kaynak
 İyi cevapla emekliye ayrılmasını, kelime/boşluk yazma anahtarlarının bağımsızlığını, ek kartın
 yazma davranışını kaynağından almasını, eski tek `typing` anahtarının taşınmasını, boşluk kartında
 toleranslı eşleşmeyi ve geri bildirimi, son cevabın geri alınmasını ve yedek geri yüklemede eski
-kart/sayaç biçimlerinin taşınmasını kontrol eder.
+kart/sayaç biçimlerinin taşınmasını kontrol eder. Son iki senaryo hâl eki katmanını doğrular: çekim
+tablosunun bütünlüğü (her kelimede üç durum, sözlükte karşılığı olan anahtarlar, kelime × 3 kart) ve
+hâl eki kartının soru/cevap/yazma akışı ile ayar kapalıyken sıraya girmemesi.
 
 ## Özellikler
 
@@ -39,6 +41,12 @@ kart/sayaç biçimlerinin taşınmasını kontrol eder.
 - **Boşluk doldurma (cloze) kartları:** 30 kalıp ifade için cümlede boşluk bırakılır; cevap eksik ifadeyi,
   kalıbın anlamını ve tam cümleyi gösterir. Yeni kart kuyruğunda kelimelerle 2:1 oranında harmanlanır,
   Ayarlar → “Kalıp ifadeler için boşluk doldurma kartları” ile kapatılabilir.
+- **Hâl eki (gramer) kartları:** çekimi tanımlı **98 isim** için Fince'nin üç temel hâli sorulur:
+  **partitiivi**, **inessiivi** (`-ssa/-ssä`) ve **illatiivi** (`-Vn / -hVn`). Kart Türkçe anlamı gösterir
+  (“ev”), cevap olarak çekimli biçim istenir (`talossa`); cevap açılınca taban kelime, ek kalıbı ve kısa
+  kullanım açıklaması görünür. Yazma modu, toleranslı karşılaştırma ve harf bazlı fark geri bildirimi
+  bu kartlarda da geçerlidir. Hâl eki kartları yön filtresinden bağımsızdır ve her hâl ayrı ilerleme tutar
+  (`kelime|form:<durum>`). Ayarlar → “Hâl eki kartları” ile kapatılabilir.
 - **Yazma modu:** Kelime ve boşluk kartlarında cevap klavyeyle yazılır ve toleranslı karşılaştırılır:
   büyük/küçük harf, noktalama ve ä/ö/å ayrımı yok sayılır, 5+ harfli cevaplarda tek harflik yazım hatası kabul edilir.
   Kelime kartlarında `/` ile ayrılmış alternatif çevirilerden herhangi biri kabul edilir (ör. `erkek` ya da
@@ -78,7 +86,7 @@ kart/sayaç biçimlerinin taşınmasını kontrol eder.
 ```
 index.html          ekran iskeleti (Çalış / Sözlük / İstatistik / Ayarlar)
 assets/styles.css   tema değişkenleri, kart, grafik ve duyarlı yerleşim
-assets/data.js      kelime verisi (16 kategori, A1/A2/B1) + CLOZE haritası + yön tanımları
+assets/data.js      kelime verisi (16 kategori, A1/A2/B1) + CLOZE + FORMS (hâl eki çekimleri) + yönler
 assets/srs.js       zamanlayıcı: schedule(), previewIntervals(), formatInterval()
 assets/store.js     localStorage, günlük sayaçlar, seri, yedekleme
 assets/app.js       çalışma döngüsü, sözlük, istatistik ve ayar bağlantıları
@@ -128,7 +136,11 @@ verinin cihazda kalması ve aralıklı tekrarın temel alınması.
 
 - İlerleme tarayıcıya bağlıdır; tarayıcı verisi silinirse kaybolur (JSON yedeği alın).
 - Telaffuz, işletim sisteminde yüklü `fi-FI` / `tr-TR` sesine bağlıdır; ses yoksa buton sessiz kalır.
-- Veri seti tek kullanıcı için hazırlanmış 542 kelimelik bir sözlüktür; dilbilgisi alıştırması veya sınav modu içermez.
+- Veri seti tek kullanıcı için hazırlanmış 542 kelimelik bir sözlüktür; sınav modu içermez. Dilbilgisi
+  tarafı yalnızca `FORMS` tablosundaki 98 ismin partitiivi/inessiivi/illatiivi çekimleriyle sınırlıdır;
+  fiil çekimi, çoğul biçimler ve diğer hâller (genitiivi, elatiivi, adessiivi…) yoktur.
+- Hâl eki kartları elle yazılmış çekimlerden üretilir; tabloda olmayan kelimeler için gramer kartı çıkmaz.
+  Sözlüğe yeni kelime eklenirse çekimleri de `FORMS` tablosuna girilmelidir.
 - B1 destesi kelime ve kalıp ağırlıklıdır; uzun okuma metni veya dinleme alıştırması içermez.
 - Boşluk doldurma yalnızca `CLOZE` haritasında karşılığı olan 30 kalıp için üretilir; diğer kelimelerde
   cümle içinde çekim değiştiği için otomatik boşluk çıkarma güvenilir değildir.

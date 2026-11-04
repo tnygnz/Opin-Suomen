@@ -11,7 +11,7 @@ const indexPath = path.join(root, "index.html");
 const assetUrl = (name) => pathToFileURL(path.join(root, "assets", name)).href;
 
 const store = await import(assetUrl("store.js"));
-const { VOCAB } = await import(assetUrl("data.js"));
+const { VOCAB, CASES, FORMS } = await import(assetUrl("data.js"));
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -357,6 +357,74 @@ async function testBackupImport() {
   await close(dom);
 }
 
+/* ── 9. Hâl eki verisi ve kart üretimi ───────────────────────── */
+function testFormData() {
+  console.log("\n9) Hâl eki verisi: tablo, çekimler ve kart üretimi");
+  const byFi = new Map(VOCAB.map((v) => [v.fi, v]));
+  const keys = Object.keys(FORMS);
+
+  const unknown = keys.filter((k) => !byFi.has(k));
+  check("çekim tablosundaki her kelime sözlükte var", unknown.length === 0, unknown.join(", "));
+
+  const missing = [];
+  const same = [];
+  for (const [fi, forms] of Object.entries(FORMS)) {
+    for (const c of Object.keys(CASES)) {
+      if (!forms[c]) missing.push(`${fi}.${c}`);
+      else if (forms[c] === fi) same.push(`${fi}.${c}`);
+    }
+    const vals = Object.keys(CASES).map((c) => forms[c]);
+    if (new Set(vals).size !== vals.length) same.push(`${fi} (aynı biçim)`);
+  }
+  check("her kelimede üç hâl eki de tanımlı", missing.length === 0, missing.join(", "));
+  check("çekimler taban kelimeden farklı", same.length === 0, same.join(", "));
+  check("yeterli sayıda kelime kapsanıyor (80+)", keys.length >= 80, `${keys.length} kelime`);
+
+  const state = store.defaultState();
+  store.ensureCards(state);
+  check("hâl eki kartı oluşturuldu", Boolean(state.cards["talo|form:ines"]));
+  check("kart yönü form:<durum> biçiminde", state.cards["talo|form:ines"]?.dir === "form:ines");
+  const created = Object.keys(state.cards).filter((k) => k.includes("|form:")).length;
+  check("kart sayısı = kelime × 3", created === keys.length * 3, `${created} kart / ${keys.length} kelime`);
+}
+
+/* ── 10. Hâl eki kartı: soru, cevap, yazma ve ayar ───────────── */
+async function testFormCard() {
+  console.log("\n10) Hâl eki kartı: çekim üretimi, yazma ve kapatma");
+  const { vocab } = vocabByFi("talo");
+  const dom = await boot(seed({ newCard: { fi: "talo", dir: "form:ines" } }));
+  const w = dom.window;
+
+  check("soru Türkçe anlamı gösteriyor", $(w, "#fcPrompt").textContent.trim() === vocab.tr, $(w, "#fcPrompt").textContent);
+  check("çip hâl ekinin adını gösteriyor", $(w, "#fcState").textContent.trim() === CASES.ines.label, $(w, "#fcState").textContent);
+  check("yazma alanı açık", $(w, "#clozeForm").hidden === false);
+  check(
+    "alan hâl ekli biçimi istiyor",
+    $(w, "#clozeInput").placeholder.includes("Hâl ekli"),
+    $(w, "#clozeInput").placeholder,
+  );
+
+  submitAnswer(w, "talossa");
+  check("doğru çekim kabul edildi", $(w, "#clozeFeedback").classList.contains("ok"), $(w, "#clozeFeedback").textContent);
+  check("cevap çekimli biçimi gösteriyor", $(w, "#fcAnswerText").textContent.trim() === "talossa");
+  check("örnek satırı taban kelimeyi ve eki gösteriyor", $(w, "#fcExample").textContent.includes("talo"), $(w, "#fcExample").textContent);
+
+  // "Kolay" yeni kartı doğrudan mezun eder: gramer kartı normal SRS'e girer.
+  grade(w, "easy");
+  const saved = await savedState(w);
+  const card = saved.cards["talo|form:ines"];
+  check("hâl eki kartı SRS'e girdi", card?.state === "review" && card.interval >= 4, JSON.stringify(card));
+  await close(dom);
+
+  const offDom = await boot(
+    seed({ newCard: { fi: "talo", dir: "form:ines" }, settings: { forms: false } }),
+  );
+  const ow = offDom.window;
+  check("ayar kapalıyken hâl eki kartı sorulmuyor", $(ow, "#fcEmpty").hidden === false);
+  check("ayar kutusu kapalı görünüyor", $(ow, "#formsEnabled").checked === false);
+  await close(offDom);
+}
+
 const tests = [
   testAlternativeTranslation,
   testExtraRepeatCard,
@@ -366,6 +434,8 @@ const tests = [
   testClozeCard,
   testUndo,
   testBackupImport,
+  testFormData,
+  testFormCard,
 ];
 
 for (const test of tests) {
