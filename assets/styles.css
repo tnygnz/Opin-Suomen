@@ -862,6 +862,10 @@ input[type="checkbox"] { width: 17px; height: 17px; accent-color: var(--brand); 
   font: inherit;
 }
 .badge.draft { border-color: rgba(183, 121, 31, 0.45); color: var(--muted); }
+/* Bekleyen taslak sayacı; aynı düğme listeyi süzer. */
+#dictDrafts { align-self: end; white-space: nowrap; }
+#dictDrafts.is-on { background: var(--brand); border-color: var(--brand); color: #fff; }
+html[data-theme="dark"] #dictDrafts.is-on { background: #2a6fbb; border-color: #2a6fbb; }
 
 .read-add {
   border: 0;

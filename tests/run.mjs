@@ -999,6 +999,24 @@ async function testReadingMode() {
   check("taslak çalışma kuyruğuna girmiyor", $(w, "#fcEmpty").hidden === false, String($(w, "#fcEmpty").hidden));
 
   $(w, '.tab[data-view="dictionary"]').click();
+  const draftToggle = $(w, "#dictDrafts");
+  check(
+    "sözlükte taslak sayacı görünür",
+    draftToggle.hidden === false && draftToggle.textContent.includes("(2)"),
+    draftToggle.textContent
+  );
+  const allRows = $(w, "#wordList").querySelectorAll("li.word").length;
+  draftToggle.click();
+  const draftRows = [...$(w, "#wordList").querySelectorAll("li.word")];
+  check(
+    "taslak filtresi yalnızca taslakları listeliyor",
+    draftRows.length === 2 && draftRows.every((li) => li.querySelector("input[data-draft]")),
+    String(draftRows.length)
+  );
+  check("filtre açık olarak işaretleniyor", $(w, "#dictDrafts").getAttribute("aria-pressed") === "true");
+  check("taslak filtresi diğer kelimeleri gizliyor", allRows > 2, String(allRows));
+  $(w, "#dictDrafts").click();
+  check("filtre kapanınca tüm kelimeler dönüyor", $(w, "#wordList").querySelectorAll("li.word").length === allRows);
   const draftInput = $(w, "#wordList input[data-draft='zzzq']");
   check("taslak satırında anlam alanı var", Boolean(draftInput));
   check("taslak satırı işaretli", $(w, "#wordList").textContent.includes("taslak"));
@@ -1008,6 +1026,7 @@ async function testReadingMode() {
   const filled = await savedState(w);
   const entry = (filled.custom || []).find((c) => c.fi === "zzzq");
   check("anlam yazınca taslak kalkıyor", entry?.tr === "zzz anlam" && entry?.draft === false, JSON.stringify(entry));
+  check("taslak sayacı anlam yazılınca düşüyor", $(w, "#dictDrafts").textContent.includes("(1)"), $(w, "#dictDrafts").textContent);
   check("tamamlanan kelime çalışmaya hazır", $(w, "#readSummary").textContent.includes("henüz çalışılmamış"), $(w, "#readSummary").textContent);
   await close(dom);
 }

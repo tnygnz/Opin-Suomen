@@ -42,7 +42,7 @@ export function defaultState() {
     fsrs: { since: 0, reviews: 0, predicted: 0, hits: 0, brier: 0 },
     typing: { attempts: 0, correct: 0, tolerated: 0, order: 0, letter: 0, word: 0, recent: [], byCard: {} },
     // Sözlük görünümünde seçilen kategori ve kapsam sonraki açılışta korunur.
-    ui: { view: "study", dictCat: "all", dictScope: "all", dictSearch: "", planDate: "" },
+    ui: { view: "study", dictCat: "all", dictScope: "all", dictSearch: "", dictDrafts: false, planDate: "" },
   };
 }
 

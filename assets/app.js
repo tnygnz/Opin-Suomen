@@ -1437,6 +1437,11 @@ function fillDraft(fi, raw) {
   toast(`“${fi}” çalışmaya hazır.`);
 }
 
+/** Anlamı yazılmayı bekleyen okuma taslaklarının sayısı. */
+function pendingDrafts() {
+  return (state.custom || []).filter((word) => word.draft).length;
+}
+
 function renderDictionary() {
   const q = $("#dictSearch").value.trim().toLocaleLowerCase("tr");
   const cat = $("#dictCat").value;
@@ -1445,8 +1450,22 @@ function renderDictionary() {
   const list = $("#wordList");
   list.textContent = "";
 
+  // Bekleyen taslak sayısı düğmenin üzerinde durur; aynı düğme listeyi süzer.
+  const pending = pendingDrafts();
+  const draftsOn = Boolean(state.ui.dictDrafts) && pending > 0;
+  state.ui.dictDrafts = draftsOn;
+  const draftToggle = $("#dictDrafts");
+  draftToggle.hidden = pending === 0;
+  draftToggle.textContent = `📝 Taslaklar (${pending})`;
+  draftToggle.setAttribute("aria-pressed", String(draftsOn));
+  draftToggle.classList.toggle("is-on", draftsOn);
+  draftToggle.title = draftsOn
+    ? "Taslak filtresini kapat, tüm kelimelere dön"
+    : "Yalnızca Türkçesi yazılmayı bekleyen taslakları göster";
+
   let shown = 0;
   VOCAB.forEach((v, i) => {
+    if (draftsOn && !v.draft) return;
     if (scope === "custom" && !v.custom) return;
     if (cat !== "all" && v.cat !== cat) return;
     if (q) {
@@ -1562,8 +1581,9 @@ function renderDictionary() {
   if (shown === 0) {
     const hint = document.createElement("li");
     hint.className = "empty-hint";
-    hint.textContent =
-      scope === "custom" && !q && cat === "all"
+    hint.textContent = draftsOn
+      ? "Taslak filtresi açık; eşleşen taslak yok. Anlam yazdıkça liste kısalır."
+      : scope === "custom" && !q && cat === "all"
         ? "Henüz kendi kelimeni eklemedin; yukarıdaki formla ekleyebilirsin."
         : "Aramaya uygun kelime bulunamadı.";
     list.append(hint);
@@ -2116,11 +2136,24 @@ function bindEvents() {
   });
   $("#dictCat").addEventListener("change", (e) => {
     state.ui.dictCat = e.target.value;
+    // Taslaklar tek kategoride toplanır; başka bir kategori seçilince filtre kapanır.
+    if (e.target.value !== "all") state.ui.dictDrafts = false;
     store.saveState(state);
     renderDictionary();
   });
   $("#dictScope").addEventListener("change", (e) => {
     state.ui.dictScope = e.target.value;
+    store.saveState(state);
+    renderDictionary();
+  });
+  $("#dictDrafts").addEventListener("click", () => {
+    state.ui.dictDrafts = !state.ui.dictDrafts;
+    if (state.ui.dictDrafts) {
+      // Taslaklar kendi kategorisinde; diğer filtreler listeyi boşaltmasın.
+      state.ui.dictCat = "all";
+      state.ui.dictScope = "all";
+      restoreDictionaryFilters();
+    }
     store.saveState(state);
     renderDictionary();
   });
@@ -2305,6 +2338,7 @@ function restoreDictionaryFilters() {
   state.ui.dictCat = cat.value;
   state.ui.dictScope = scope.value;
   state.ui.dictSearch = search.value;
+  state.ui.dictDrafts = Boolean(state.ui.dictDrafts);
 }
 
 /* ── Başlangıç ───────────────────────────────────── */
