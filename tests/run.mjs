@@ -1,7 +1,7 @@
 /* Yazma modu ve ek tekrar mantığı için kalıcı testler (jsdom).
  * Çalıştırma: npm test
  */
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { createContext, runInContext } from "node:vm";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -864,6 +864,10 @@ async function testPwaOffline() {
   check("önbellek listesi kabuğu içeriyor", ["./", "index.html", "assets/app.js", "assets/fsrs.js"].every((f) => core.includes(f)));
   const missing = core.filter((file) => file !== "./" && !existsSync(path.join(root, file)));
   check("önbellekteki her dosya diskte var", missing.length === 0, missing.join(", "));
+  const missingModules = readdirSync(path.join(root, "assets"))
+    .filter((file) => file.endsWith(".js"))
+    .filter((file) => !core.includes(`assets/${file}`));
+  check("çevrimdışı kabuk tüm JS modüllerini kapsıyor", missingModules.length === 0, missingModules.join(", "));
 
   // Fetch mantığı: sahte Cache API ile çevrimdışı senaryolar.
   const handlers = {};

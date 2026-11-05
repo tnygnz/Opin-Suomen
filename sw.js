@@ -6,7 +6,7 @@
  * önbellekler silinir; bu yüzden dosya değişikliklerinde CACHE adını artır.
  */
 
-const CACHE = "suomi-tr-v1";
+const CACHE = "suomi-tr-v2";
 
 const CORE = [
   "./",
@@ -18,6 +18,7 @@ const CORE = [
   "assets/store.js",
   "assets/srs.js",
   "assets/fsrs.js",
+  "assets/reading.js",
   "assets/icon-192.png",
   "assets/icon-512.png",
   "assets/apple-touch-icon.png",
