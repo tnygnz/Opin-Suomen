@@ -7,12 +7,29 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Zip'i aç
-        run: unzip -o sanat-web-yukle.zip && rm sanat-web-yukle.zip
-      - name: Commit ve push
+      - name: Zip'i aç (varsa)
+        id: unzip
         run: |
+          set -euo pipefail
+          out="${GITHUB_OUTPUT:-/dev/null}"
+          if [ ! -f sanat-web-yukle.zip ]; then
+            echo "Zip yok; yapılacak iş kalmadı (idempotent çıkış)."
+            echo "done=false" >> "$out"
+            exit 0
+          fi
+          unzip -o sanat-web-yukle.zip
+          rm -f sanat-web-yukle.zip
+          echo "done=true" >> "$out"
+      - name: Commit ve push
+        if: steps.unzip.outputs.done == 'true'
+        run: |
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
+          if git diff --cached --quiet; then
+            echo "Değişiklik yok; commit gerekmiyor (idempotent çıkış)."
+            exit 0
+          fi
           git commit -m "sanat: zip'ten çıkar"
           git push
