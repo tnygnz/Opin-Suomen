@@ -201,6 +201,22 @@ export function exportBackup(state) {
 }
 
 /** Yedeği içe aktarır; doğrulama başarısızsa hata fırlatır. */
+/**
+ * Yalnızca kelime taşıyan yedeği (kelime paketi) ayırır.
+ * Kart ilerlemesi taşıyan tam yedeklerde null döner; onlar eskisi gibi
+ * ilerlemenin yerine yazılır. Paketler mevcut duruma eklenir.
+ */
+export function readWordPack(text) {
+  const parsed = JSON.parse(text);
+  const incoming = parsed.app === "suomi-tr" ? parsed.state : parsed;
+  if (!incoming || typeof incoming !== "object") {
+    throw new Error("Dosya bir Suomi–Türkçe yedeği gibi görünmüyor.");
+  }
+  const cards = incoming.cards && typeof incoming.cards === "object" ? Object.keys(incoming.cards) : [];
+  if (cards.length > 0 || !Array.isArray(incoming.custom)) return null;
+  return incoming.custom;
+}
+
 export function importBackup(text) {
   const parsed = JSON.parse(text);
   const incoming = parsed.app === "suomi-tr" ? parsed.state : parsed;

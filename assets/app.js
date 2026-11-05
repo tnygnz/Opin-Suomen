@@ -134,6 +134,41 @@ function addCustomWord() {
   toast(`“${fi}” eklendi.`);
 }
 
+/**
+ * Kelime paketini mevcut duruma katar: kartlar, ayarlar ve seri korunur.
+ * Aynı kelime (yerleşik sözlük veya paketin kendi içi) ikinci kez eklenmez.
+ */
+function mergeWordPack(words) {
+  const taken = new Set(VOCAB.map((vocab) => vocab.fi.toLocaleLowerCase("fi")));
+  const fresh = [];
+  let skipped = 0;
+  for (const word of words) {
+    const fi = String(word?.fi || "").trim().replace(/\s+/g, " ");
+    const tr = String(word?.tr || "").trim().replace(/\s+/g, " ");
+    if (!fi || !tr) continue;
+    const key = fi.toLocaleLowerCase("fi");
+    if (taken.has(key)) {
+      skipped += 1;
+      continue;
+    }
+    taken.add(key);
+    fresh.push({
+      fi,
+      tr,
+      lvl: LEVELS[word.lvl] ? word.lvl : "A1",
+      cat: CATEGORIES[word.cat] ? word.cat : "yhteiskunta",
+      ex: Array.isArray(word.ex) && word.ex.length === 2 && word.ex[0] && word.ex[1]
+        ? [String(word.ex[0]), String(word.ex[1])]
+        : null,
+    });
+  }
+  if (fresh.length) {
+    state.custom = [...(state.custom || []), ...fresh];
+    persistCustomWords();
+  }
+  return { added: fresh.length, skipped };
+}
+
 function removeCustomWord(fi) {
   if (!confirm(`“${fi}” kelimesi ve kartları silinsin mi?`)) return;
   state.custom = (state.custom || []).filter((w) => w.fi !== fi);
@@ -2260,6 +2295,17 @@ function bindEvents() {
     if (!file) return;
     try {
       const text = await file.text();
+      // Kelime paketi yalnızca sözlüğe eklenir; ilerleme ve ayarlar olduğu gibi kalır.
+      const pack = store.readWordPack(text);
+      if (pack) {
+        const { added, skipped } = mergeWordPack(pack);
+        toast(
+          added
+            ? `${added} kelime eklendi${skipped ? `, ${skipped} tanesi zaten vardı` : ""}. İlerlemen korundu.`
+            : "Yeni kelime yok; paketteki kelimeler sözlükte zaten var."
+        );
+        return;
+      }
       const imported = store.importBackup(text);
       if (!confirm("İçe aktarılan yedek mevcut ilerlemenin üzerine yazılacak. Devam edilsin mi?")) return;
       Object.assign(state, imported);

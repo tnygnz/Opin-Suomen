@@ -366,6 +366,62 @@ async function testBackupImport() {
   await close(dom);
 }
 
+/* ── 8b. Kelime paketi: ilerlemeyi silmeden birleştirme ─────── */
+async function testWordPackImport() {
+  console.log("\n8b) Kelime paketi: ilerleme korunarak birleştirilir");
+  // app.js, data.js'in VOCAB dizisini paylaşır; senaryo sonunda uzunluğu geri alınır.
+  const vocabLen = VOCAB.length;
+  const dom = await boot(seed({}));
+  const w = dom.window;
+  const before = await savedState(w);
+  const firstKey = Object.keys(before.cards)[0];
+
+  const pack = {
+    app: "suomi-tr",
+    pack: "test paketi",
+    state: {
+      cards: {},
+      custom: [
+        { fi: "koho", tr: "deneme bir", lvl: "A1", cat: "yemek", ex: ["Koho on hyvä.", "Deneme bir iyi."] },
+        { fi: "koho", tr: "tekrar", lvl: "A1", cat: "yemek" },
+        { fi: "hei", tr: "zaten var", lvl: "A1", cat: "nezaket" },
+        { fi: "  ", tr: "boş", lvl: "A1", cat: "yemek" },
+        { fi: "kaksi sanaa", tr: "  iki   kelime ", lvl: "ZZ", cat: "yok" },
+      ],
+    },
+  };
+
+  const input = $(w, "#importInput");
+  Object.defineProperty(input, "files", {
+    value: [{ text: async () => JSON.stringify(pack) }],
+    configurable: true,
+  });
+  input.dispatchEvent(new w.Event("change"));
+  await wait(300);
+
+  const after = await savedState(w);
+  check("paket kelimeleri sözlüğe eklendi", after.custom.length === before.custom.length + 2, String(after.custom.length));
+  check("paket içindeki tekrar atlandı", after.custom.filter((c) => c.fi === "koho").length === 1);
+  check("yerleşik kelime tekrar eklenmedi", !after.custom.some((c) => c.fi === "hei"));
+  check("boş Fince alanı atlandı", after.custom.every((c) => String(c.fi).trim() !== ""));
+  check(
+    "boşluklar kırpıldı",
+    after.custom.find((c) => c.fi === "kaksi sanaa")?.tr === "iki kelime",
+    after.custom.find((c) => c.fi === "kaksi sanaa")?.tr,
+  );
+  check(
+    "geçersiz seviye ve kategori varsayılana düştü",
+    after.custom.find((c) => c.fi === "kaksi sanaa")?.lvl === "A1" &&
+      after.custom.find((c) => c.fi === "kaksi sanaa")?.cat !== "yok",
+    JSON.stringify(after.custom.find((c) => c.fi === "kaksi sanaa")),
+  );
+  check("kart ilerlemesi korundu", JSON.stringify(after.cards[firstKey]) === JSON.stringify(before.cards[firstKey]));
+  check("ayarlar korundu", JSON.stringify(after.settings) === JSON.stringify(before.settings));
+  check("yeni kelimelerin kartı açıldı", Boolean(after.cards["koho|fi-tr"]));
+  await close(dom);
+  VOCAB.length = vocabLen;
+}
+
 /* ── 9. Hâl eki verisi ve kart üretimi ───────────────────────── */
 function testFormData() {
   console.log("\n9) Hâl eki verisi: tablo, çekimler ve kart üretimi");
@@ -1082,6 +1138,7 @@ const tests = [
   testClozeCard,
   testUndo,
   testBackupImport,
+  testWordPackImport,
   testFormData,
   testFormCard,
   testConjData,
