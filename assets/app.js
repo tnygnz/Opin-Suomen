@@ -2290,6 +2290,12 @@ function bindEvents() {
     toast("Yedek indirildi.");
   });
 
+  // Kendi kelimeler yalnızca kelime paketi olarak indirilir; başka cihazda ilerlemeyi ezmeden eklenir.
+  $("#wordsExportBtn").addEventListener("click", () => {
+    const count = store.exportWordPack(state.custom);
+    toast(count ? `${count} kelime paket olarak indirildi.` : "Sözlükte kendi kelimen yok.");
+  });
+
   $("#importInput").addEventListener("change", async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;

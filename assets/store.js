@@ -200,6 +200,47 @@ export function exportBackup(state) {
   setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
 
+/**
+ * Kendi eklenen kelimelerden taşınabilir bir kelime paketi üretir.
+ * Kart ilerlemesi pakete girmez: dosya başka cihazda yalnızca sözlüğe eklenir.
+ * Kelime yoksa null döner.
+ */
+export function buildWordPack(words) {
+  const custom = (words || [])
+    .map((word) => {
+      const fi = String(word?.fi || "").trim().replace(/\s+/g, " ");
+      const tr = String(word?.tr || "").trim().replace(/\s+/g, " ");
+      const clean = { fi, tr, lvl: word?.lvl || "A1", cat: word?.cat || "yhteiskunta" };
+      const ex = word?.ex;
+      if (Array.isArray(ex) && ex.length === 2 && ex[0] && ex[1]) clean.ex = [String(ex[0]), String(ex[1])];
+      return clean;
+    })
+    .filter((word) => word.fi && word.tr);
+  if (!custom.length) return null;
+  return {
+    app: "suomi-tr",
+    pack: "Kendi kelimelerim",
+    exportedAt: new Date().toISOString(),
+    state: { cards: {}, custom },
+  };
+}
+
+/** Kendi kelimelerini paket olarak indirir; eklenen kelime sayısını döndürür. */
+export function exportWordPack(words) {
+  const payload = buildWordPack(words);
+  if (!payload) return 0;
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `suomi-tr-kelimeler-${todayKey()}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+  return payload.state.custom.length;
+}
+
 /** Yedeği içe aktarır; doğrulama başarısızsa hata fırlatır. */
 /**
  * Yalnızca kelime taşıyan yedeği (kelime paketi) ayırır.

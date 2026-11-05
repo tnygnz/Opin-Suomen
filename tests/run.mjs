@@ -422,6 +422,26 @@ async function testWordPackImport() {
   VOCAB.length = vocabLen;
 }
 
+/* ── 8c. Kendi kelimelerin paket olarak dışa aktarılması ─────── */
+function testWordPackExport() {
+  console.log("\n8c) Kendi kelimeler kelime paketi olarak dışa aktarılır");
+  const words = [
+    { fi: "  kaali ", tr: "laha  na", lvl: "A1", cat: "yemek", ex: ["Kaali on hyvää.", "Lahana iyidir."] },
+    { fi: "palaa", tr: "yanmak", lvl: "A1", cat: "fiiller", ex: null },
+    { fi: "  ", tr: "boş", lvl: "A1", cat: "yemek" },
+  ];
+  const pack = store.buildWordPack(words);
+  check("paket uygulama imzası taşıyor", pack?.app === "suomi-tr");
+  check("paket kart taşımıyor (ilerleme korunur)", Object.keys(pack?.state.cards || {}).length === 0);
+  check("boş kelime pakete girmiyor", pack?.state.custom.length === 2, String(pack?.state.custom.length));
+  check("boşluklar kırpıldı", pack?.state.custom[0].fi === "kaali" && pack?.state.custom[0].tr === "laha na");
+  check("örnek cümle korundu", pack?.state.custom[0].ex?.length === 2);
+  check("örnek cümlesiz kelimede ex alanı yok", !("ex" in pack.state.custom[1]));
+  const back = store.readWordPack(JSON.stringify(pack));
+  check("dışa aktarılan dosya kelime paketi olarak okunuyor", Array.isArray(back) && back.length === 2);
+  check("kelimesiz sözlükte paket üretilmiyor", store.buildWordPack([]) === null);
+}
+
 /* ── 9. Hâl eki verisi ve kart üretimi ───────────────────────── */
 function testFormData() {
   console.log("\n9) Hâl eki verisi: tablo, çekimler ve kart üretimi");
@@ -1139,6 +1159,7 @@ const tests = [
   testUndo,
   testBackupImport,
   testWordPackImport,
+  testWordPackExport,
   testFormData,
   testFormCard,
   testConjData,
