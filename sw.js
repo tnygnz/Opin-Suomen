@@ -6,7 +6,7 @@
  * önbellekler silinir; bu yüzden dosya değişikliklerinde CACHE adını artır.
  */
 
-const CACHE = "suomi-tr-v3";
+const CACHE = "suomi-tr-v4";
 
 const CORE = [
   "./",
