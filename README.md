@@ -75,6 +75,11 @@ kapalıyken gramer kartları sıraya girmemelidir.
   Motor geçişi, gölge farkı oturana kadar yapılmaz. FSRS'in her gerçek tekrar denemesindeki hatırlama tahmini
   ile gerçekleşen sonuç ayrıca biriktirilir; "geçiş kararı" kutusu 150 cevap ve 14 gün eşiğinden sonra Brier
   skoru, öngörülen/gerçek hatırlama ve 30 günlük yük farkını birleştirip geçiş önerisi verir.
+- **Okuma modu:** Sözlük sekmesine bir Fince metin yapıştırınca her kelime sözlükle eşleştirilir; çekim
+  ekleri kısa bir ek listesiyle (en çok iki adım) sıyrılır, yalnızca gerçek sözlük eşleşmeleri sayılır.
+  Panel "bu metnin %68'ini anlıyorsun" der, tekil kelime oranını ayrıca verir ve bilinmeyen kelimeleri
+  sıklıkla listeler; "ekle" düğmesi kelimeyi ekleme formuna taşır. "Bilinen" ölçütü kartın çalışılmış
+  olmasıdır, sözlükte bulunması değil.
 - **Telefonda kurulabilir ve çevrimdışı (PWA):** `manifest.json` uygulamayı "ana ekrana ekle" ile
   kurulabilir yapar; `sw.js` uygulama kabuğunu (HTML, CSS, tüm JS modülleri, simgeler) kurulumda önbelleğe
   alır. Gezinme istekleri ağ-öncelikli, statik dosyalar önbellek-öncelikli ve arka planda tazelenir; uçak

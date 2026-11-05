@@ -782,6 +782,44 @@ input[type="checkbox"] { width: 17px; height: 17px; accent-color: var(--brand); 
   .stat-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
+/* Okuma modu */
+#readText {
+  width: 100%;
+  min-height: 120px;
+  resize: vertical;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel);
+  color: var(--ink);
+  font: inherit;
+  line-height: 1.55;
+}
+.read-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.read-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  font-size: 13px;
+}
+.read-chip b { font-weight: 600; }
+.read-chip span { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 12px; }
+.read-chip.unknown { border-color: rgba(197, 48, 48, 0.45); }
+.read-chip.learning { border-color: rgba(183, 121, 31, 0.45); }
+.read-add {
+  border: 0;
+  background: var(--brand-soft);
+  color: var(--brand-ink);
+  border-radius: 999px;
+  padding: 2px 9px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
 /* Geçiş kararı kutusu: gölge kalibrasyonu ve yük farkı */
 .verdict {
   margin-top: 12px;

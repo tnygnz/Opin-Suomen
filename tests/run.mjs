@@ -13,6 +13,7 @@ const assetUrl = (name) => pathToFileURL(path.join(root, "assets", name)).href;
 
 const store = await import(assetUrl("store.js"));
 const fsrs = await import(assetUrl("fsrs.js"));
+const reading = await import(assetUrl("reading.js"));
 const { VOCAB, CASES, FORMS, PERSONS, VERB_TYPES, CONJ, CATEGORIES } = await import(assetUrl("data.js"));
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -917,6 +918,45 @@ async function testPwaOffline() {
   check("GET dışı istekler önbelleğe alınmıyor", responded === null);
 }
 
+/* ── 19. Okuma modu ─────────────────────────────── */
+async function testReadingMode() {
+  console.log("\n19) Okuma modu: kapsama oranı ve sözlüğe ekleme");
+
+  const toks = reading.tokenize("Mökille menemme, järven rannalla!");
+  check("cümle kelimelere ayrılıyor", toks.length === 4 && toks[0].lower === "mökille" && toks[3].lower === "rannalla", JSON.stringify(toks.map((t) => t.lower)));
+  check("çekim eki sıyrılıyor", reading.stems("talossa").includes("talo"), reading.stems("talossa").join(","));
+  check("çoğul + ek iki adımda sıyrılıyor", reading.stems("taloissa").includes("talo"), reading.stems("taloissa").join(","));
+  check("kısa kelimeler atlanıyor", reading.tokenize("ja on a").length === 2);
+
+  const lookup = (word) => {
+    const stem = reading.stems(word).find((s) => ["talo", "sauna"].includes(s));
+    return stem ? { vocab: { fi: stem }, studied: stem === "talo" } : null;
+  };
+  const result = reading.analyze("Talo on. Talossa on sauna.", lookup);
+  check("kapsama oranı hesaplanıyor", Math.abs(result.coverage - 0.4) < 1e-9, String(result.coverage));
+  check("bilinen/bilinmeyen sayıları", result.known === 2 && result.unknown === 2 && result.learning === 1, JSON.stringify({ k: result.known, u: result.unknown, l: result.learning }));
+  check("tekil kelime kapsaması ayrı", result.uniqueTotal === 3 && result.uniqueKnown === 1, JSON.stringify({ t: result.uniqueTotal, k: result.uniqueKnown }));
+  check("bilinmeyenler önce listeleniyor", result.words[0].word === "on" && result.words[0].count === 2, JSON.stringify(result.words));
+
+  const dom = await boot(seed());
+  const w = dom.window;
+  $(w, '.tab[data-view="dictionary"]').click();
+  const box = $(w, "#readText");
+  box.value = "Talo on. zzzq zzzq.";
+  box.dispatchEvent(new w.Event("input", { bubbles: true }));
+  await wait(240);
+
+  const summary = $(w, "#readSummary").textContent;
+  check("özet kapsama yüzdesi veriyor", /%\d+'ini anlıyorsun/.test(summary), summary);
+  check("özet tekil kelime oranını da veriyor", summary.includes("Tekil kelimede"), summary);
+  check("bilinmeyen kelime listeleniyor", $(w, "#readUnknown").textContent.includes("zzzq"), $(w, "#readUnknown").textContent);
+
+  const chip = [...$(w, "#readUnknown").querySelectorAll(".read-chip")].find((c) => c.textContent.includes("zzzq"));
+  chip.querySelector(".read-add").click();
+  check("ekle kısayolu formu dolduruyor", $(w, "#newWordFi").value === "zzzq", $(w, "#newWordFi").value);
+  await close(dom);
+}
+
 const tests = [
   testAlternativeTranslation,
   testExtraRepeatCard,
@@ -936,6 +976,7 @@ const tests = [
   testFsrsMath,
   testEngineCompareAndPlanner,
   testPwaOffline,
+  testReadingMode,
 ];
 
 for (const test of tests) {

@@ -4,6 +4,7 @@ import {
   schedule, previewIntervals, cardStatusLabel, isMature, formatInterval, newCard,
 } from "./srs.js";
 import * as fsrs from "./fsrs.js";
+import * as reading from "./reading.js";
 import * as store from "./store.js";
 
 const $ = (sel) => document.querySelector(sel);
@@ -1289,6 +1290,88 @@ function badgeFor(card) {
   return { label: "İlerliyor", cls: "learn" };
 }
 
+/* ── Okuma modu ────────────────────────────────────
+ * Yapıştırılan metin sözlükle eşleştirilir; "bilinen" ölçütü kart durumudur. */
+const READING_BY_FI = new Map(VOCAB.map((vocab) => [vocab.fi, vocab]));
+
+function readingLookup(lower) {
+  for (const stem of reading.stems(lower)) {
+    const vocab = READING_BY_FI.get(stem);
+    if (!vocab) continue;
+    const card = state.cards[store.cardKey(vocab, dirsActive()[0])];
+    return { vocab, studied: Boolean(card) && card.state !== "new" };
+  }
+  return null;
+}
+
+let readingTimer = null;
+function scheduleReading() {
+  clearTimeout(readingTimer);
+  readingTimer = setTimeout(renderReading, 150);
+}
+
+function renderReading() {
+  const input = $("#readText");
+  const summary = $("#readSummary");
+  const list = $("#readUnknown");
+  const text = input.value;
+  list.textContent = "";
+
+  if (!text.trim()) {
+    summary.textContent =
+      "Yapıştırdığın metinde bildiğin kelimeleri sayar; bilmediklerini sözlüğe eklemene yardım eder.";
+    return;
+  }
+
+  const result = reading.analyze(text, readingLookup);
+  if (!result.total) {
+    summary.textContent = "Metinde Fince kelime bulunamadı.";
+    return;
+  }
+
+  const pct = (value) => Math.round(value * 100);
+  summary.textContent =
+    `Bu metnin %${pct(result.coverage)}'ini anlıyorsun: ${result.known}/${result.total} kelime. ` +
+    `Tekil kelimede %${pct(result.uniqueCoverage)} (${result.uniqueKnown}/${result.uniqueTotal}).` +
+    (result.learning ? ` ${result.learning} kelime sözlükte var ama henüz çalışılmamış.` : "") +
+    (result.unknown ? ` ${result.unknown} kelime sözlükte yok.` : "");
+
+  const pending = result.words.filter((word) => word.status !== "known").slice(0, 14);
+  for (const word of pending) {
+    const chip = document.createElement("span");
+    chip.className = `read-chip ${word.status}`;
+
+    const label = document.createElement("b");
+    label.textContent = word.word;
+    const count = document.createElement("span");
+    count.textContent = `${word.count}×`;
+    chip.append(label, count);
+
+    if (word.status === "unknown") {
+      const add = document.createElement("button");
+      add.type = "button";
+      add.className = "read-add";
+      add.textContent = "ekle";
+      add.title = "Bu kelimeyi sözlüğe ekle";
+      add.addEventListener("click", () => {
+        const fi = $("#newWordFi");
+        fi.value = word.word;
+        if (typeof fi.scrollIntoView === "function") {
+          fi.scrollIntoView({ block: "center", behavior: "smooth" });
+        }
+        $("#newWordTr").focus();
+      });
+      chip.append(add);
+    } else {
+      const tag = document.createElement("span");
+      tag.textContent = "sözlükte";
+      chip.append(tag);
+    }
+
+    list.append(chip);
+  }
+}
+
 function renderDictionary() {
   const q = $("#dictSearch").value.trim().toLocaleLowerCase("tr");
   const cat = $("#dictCat").value;
@@ -1861,6 +1944,8 @@ function bindEvents() {
   });
 
   $("#focusPill").addEventListener("click", clearFocus);
+
+  $("#readText").addEventListener("input", scheduleReading);
 
   $("#planDate").addEventListener("change", () => {
     state.ui.planDate = $("#planDate").value;
