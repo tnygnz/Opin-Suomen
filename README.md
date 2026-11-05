@@ -117,9 +117,37 @@ kapalıyken gramer kartları sıraya girmemelidir.
   boşluk cümlesi) ve “Ek tekrar” etiketi taşır; günlük yeni kart kotasını harcamaz. **İyi/Kolay** ile
   bitirilirse emekliye ayrılır ve bekleyen hata sayacı sıfırlanır; **Tekrar/Zor** seçilirse 1–5 dk sonra
   yeniden sorulur. İstatistik ekranı, ek tekrar bekleyen kartları kaynak türü ve hata sayısıyla listeler.
-- **Yedekleme:** JSON olarak indir / geri yükle, ilerlemeyi sıfırla.
+- **Yedekleme:** JSON olarak indir / geri yükle, ilerlemeyi sıfırla; kendi kelimelerini (isteğe bağlı
+  kart ilerlemesiyle) ayrı bir kelime paketi olarak başka cihaza taşı.
 - **Klavye:** `Space` cevabı gösterir (yazma modunda giriş alanına odaklanır), `1`–`4` not verir.
   Mobil öncelikli, açık/karanlık tema.
+
+## Kendi kelimelerini paket olarak taşıma
+
+Ayarlar → Veri'deki **“Kendi kelimelerimi pakete aktar”** yalnızca senin eklediğin kelimeleri
+`suomi-tr-kelimeler-YYYY-AA-GG.json` adıyla indirir; dosya biçimi
+`{ app: "suomi-tr", pack, exportedAt, state: { cards, custom } }` şeklindedir. Yerleşik sözlük,
+ayarlar ve seri dosyaya girmez.
+
+**Varsayılan olarak kart ilerlemesi taşınmaz:** dosyada `cards: {}` olur ve başka cihazda yalnızca
+sözlüğe eklenir. Altındaki **“Kelime paketi kart ilerlemesini de taşısın”** kutusu işaretlenirse paket,
+yalnızca **paketteki kelimelerin** kartlarını taşır (kendi kelimelerinin iki yönlü kartları); başka bir
+kelimenin — örneğin kitap sözlüğündeki bir kelimenin — ilerlemesi pakete girmez.
+
+İçe aktarma (Ayarlar → “Yedeği geri yükle” → dosya seç) birleştirir, ilerlemenin yerine yazmaz:
+
+- Ayarlar, seri, günlük sayaçlar ve mevcut kart ilerlemesi olduğu gibi kalır.
+- Yeni kelimeler sözlüğe eklenir; aynı Fince kelime (yerleşik sözlükte ya da senin listende varsa)
+  ikinci kez eklenmez.
+- Paketteki kartlardan yalnızca **paketteki kelimelere** ait olanlar ve yalnızca **yereldeki karttan
+  daha çok çalışılmış** olanlar uygulanır: paketteki `reps` yereldekinden büyükse paket kartı geçer,
+  eşitse veya yerel daha yüksekse yerel kart korunur. Böylece içe aktarma hiçbir kartı geriye çekmez;
+  kart yeni cihazda hiç yoksa (reps 0) paketteki ilerleme doğrudan yazılır.
+- Aynı paketi ikinci kez seçmek değişiklik üretmez: “Yeni kelime yok; paketteki kelimeler sözlükte
+  zaten var.” Bildirim, gerçekten eklenen kelime ve uygulanan kart sayısını söyler
+  (“1 kelime eklendi, 2 kart ilerlemesi alındı. İlerlemen korundu.”).
+- `pack` adı taşımayan ve kart içeren dosya kelime paketi değil **tam yedek** sayılır; o dosya,
+  onay sorulduktan sonra eskisi gibi ilerlemenin üzerine yazılır.
 
 ## Dosya yapısı
 
@@ -184,7 +212,7 @@ verinin cihazda kalması ve aralıklı tekrarın temel alınması.
   Sözlüğe yeni kelime eklenirse çekimleri de `FORMS` tablosuna girilmelidir.
 - Kendi eklediğin kelimeler için yalnızca iki yönlü kelime kartı üretilir; hâl eki ya da fiil çekimi kartı
   oluşmaz (çekim tablosu girişi gerektirir). Yeni kelimeler `localStorage` içinde saklandığı için başka
-  cihazlara yalnızca JSON yedeğiyle taşınır.
+  cihazlara JSON yedeğiyle ya da kelime paketiyle taşınır.
 - B1 destesi kelime ve kalıp ağırlıklıdır; uzun okuma metni veya dinleme alıştırması içermez.
 - Boşluk doldurma yalnızca `CLOZE` haritasında karşılığı olan 30 kalıp için üretilir; diğer kelimelerde
   cümle içinde çekim değiştiği için otomatik boşluk çıkarma güvenilir değildir.
