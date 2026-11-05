@@ -180,6 +180,7 @@
           </form>
           <p class="muted small">
             Eklediğin kelimeler sözlüğe, çalışma kuyruğuna ve JSON yedeğine girer; yalnızca bu tarayıcıda saklanır.
+            Okuma modunda toplu eklenen kelimeler taslak olarak durur: Türkçesini yazana kadar çalışma kuyruğuna girmez.
           </p>
         </div>
 
@@ -193,6 +194,9 @@
             <textarea id="readText" rows="5" lang="fi" placeholder="Huomenna menemme mökille ja saunomme järven rannalla."></textarea>
           </label>
           <p class="muted small" id="readSummary">Yapıştırdığın metinde bildiğin kelimeleri sayar; bilmediklerini sözlüğe eklemene yardım eder.</p>
+          <div class="toolbar read-actions">
+            <button class="btn" type="button" id="readBulk" hidden>Bilinmeyenleri taslağa ekle</button>
+          </div>
           <div class="read-chips" id="readUnknown"></div>
         </div>
 

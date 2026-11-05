@@ -834,6 +834,7 @@ input[type="checkbox"] { width: 17px; height: 17px; accent-color: var(--brand); 
   font: inherit;
   line-height: 1.55;
 }
+.read-actions { margin-top: 10px; }
 .read-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
 .read-chip {
   display: inline-flex;
@@ -848,6 +849,20 @@ input[type="checkbox"] { width: 17px; height: 17px; accent-color: var(--brand); 
 .read-chip span { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 12px; }
 .read-chip.unknown { border-color: rgba(197, 48, 48, 0.45); }
 .read-chip.learning { border-color: rgba(183, 121, 31, 0.45); }
+/* Taslak kelime: anlamı yazılmayı bekleyen satır */
+.draft-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 6px; }
+.draft-row input {
+  flex: 1 1 180px;
+  min-width: 140px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--ink);
+  font: inherit;
+}
+.badge.draft { border-color: rgba(183, 121, 31, 0.45); color: var(--muted); }
+
 .read-add {
   border: 0;
   background: var(--brand-soft);

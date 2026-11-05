@@ -26,6 +26,8 @@ export const CATEGORIES = {
   ilmaisut:  { label: "Kalıp İfadeler",          icon: "💬" },
   yhteiskunta:{ label: "Toplum & Soyut",        icon: "🏛️" },
   kultur:    { label: "Kültür & Finlandiya",    icon: "🇫🇮" },
+  // Okuma modunda toplu eklenen kelimeler buraya düşer; anlamı yazılana kadar taslaktır.
+  okuma:     { label: "Okuma taslakları",       icon: "📝" },
 };
 
 export const VOCAB = [

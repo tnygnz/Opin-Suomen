@@ -973,6 +973,42 @@ async function testReadingMode() {
   const chip = [...$(w, "#readUnknown").querySelectorAll(".read-chip")].find((c) => c.textContent.includes("zzzq"));
   chip.querySelector(".read-add").click();
   check("ekle kısayolu formu dolduruyor", $(w, "#newWordFi").value === "zzzq", $(w, "#newWordFi").value);
+
+  // Toplu taslak: tek tek eklemek yerine bilinmeyenler tek tuşla sözlüğe düşer.
+  box.value = "zzzq uuux uuux.";
+  box.dispatchEvent(new w.Event("input", { bubbles: true }));
+  await wait(240);
+  const bulk = $(w, "#readBulk");
+  check("toplu ekleme düğmesi görünür", bulk.hidden === false);
+  check("düğme bilinmeyen sayısını gösteriyor", bulk.textContent.includes("(2)"), bulk.textContent);
+
+  bulk.click();
+  await wait(80);
+  const drafted = await savedState(w);
+  check(
+    "bilinmeyenler taslak olarak eklendi",
+    drafted.custom.length === 2 &&
+      drafted.custom.every((c) => c.draft === true && c.tr === "" && c.cat === "okuma" && c.lvl === "A1"),
+    JSON.stringify(drafted.custom)
+  );
+  check("taslak kartı yeni olarak açıldı", drafted.cards["zzzq|fi-tr"]?.state === "new");
+  check("eklendikten sonra düğme gizleniyor", $(w, "#readBulk").hidden === true, String($(w, "#readBulk").hidden));
+
+  $(w, '.tab[data-view="study"]').click();
+  // Taslak kartları "yeni" olsa da kuyruk boş kalmalı: anlamı yazılmadan sorulmaz.
+  check("taslak çalışma kuyruğuna girmiyor", $(w, "#fcEmpty").hidden === false, String($(w, "#fcEmpty").hidden));
+
+  $(w, '.tab[data-view="dictionary"]').click();
+  const draftInput = $(w, "#wordList input[data-draft='zzzq']");
+  check("taslak satırında anlam alanı var", Boolean(draftInput));
+  check("taslak satırı işaretli", $(w, "#wordList").textContent.includes("taslak"));
+  draftInput.value = "zzz anlam";
+  $(w, "#wordList button[data-draft-save='zzzq']").click();
+  await wait(80);
+  const filled = await savedState(w);
+  const entry = (filled.custom || []).find((c) => c.fi === "zzzq");
+  check("anlam yazınca taslak kalkıyor", entry?.tr === "zzz anlam" && entry?.draft === false, JSON.stringify(entry));
+  check("tamamlanan kelime çalışmaya hazır", $(w, "#readSummary").textContent.includes("henüz çalışılmamış"), $(w, "#readSummary").textContent);
   await close(dom);
 }
 

@@ -73,6 +73,8 @@ function customEntry(word) {
     cat: CATEGORIES[word.cat] ? word.cat : Object.keys(CATEGORIES)[0],
     ex: Array.isArray(word.ex) && word.ex.length === 2 && word.ex[0] ? word.ex : null,
     custom: true,
+    // Taslak: okuma modunda toplu eklenen, Türkçesi henüz yazılmamış kelime.
+    draft: Boolean(word.draft),
   };
 }
 
@@ -80,6 +82,8 @@ function customEntry(word) {
 function applyCustomWords() {
   if (VOCAB.length > BUILTIN_WORDS) VOCAB.length = BUILTIN_WORDS;
   for (const word of state.custom || []) VOCAB.push(customEntry(word));
+  // Okuma modu indeksi sözlük değişince tazelenir; yoksa yeni kelimeler tanınmaz.
+  refreshReadingIndex();
 }
 
 /** Değişiklikten sonra kartları, sayaçları ve sözlüğü tazeler. */
@@ -305,7 +309,9 @@ function activeJobs() {
     if (conjOfDir(source) && !conjEnabled()) continue;
     jobs.push({ id, dir: "extra", key, card, vocab: VOCAB[id], source });
   }
-  return focusFilter ? jobs.filter(focusMatches) : jobs;
+  // Taslak kelimeler anlamı yazılana kadar çalışma kuyruğuna girmez.
+  const usable = jobs.filter((job) => !job.vocab.draft);
+  return focusFilter ? usable.filter(focusMatches) : usable;
 }
 
 /** Ek tekrar kartının kaynak yönü (odak eşleşmesi için). */
@@ -1292,7 +1298,10 @@ function badgeFor(card) {
 
 /* ── Okuma modu ────────────────────────────────────
  * Yapıştırılan metin sözlükle eşleştirilir; "bilinen" ölçütü kart durumudur. */
-const READING_BY_FI = new Map(VOCAB.map((vocab) => [vocab.fi, vocab]));
+let READING_BY_FI = new Map(VOCAB.map((vocab) => [vocab.fi, vocab]));
+function refreshReadingIndex() {
+  READING_BY_FI = new Map(VOCAB.map((vocab) => [vocab.fi, vocab]));
+}
 
 function readingLookup(lower) {
   for (const stem of reading.stems(lower)) {
@@ -1314,18 +1323,21 @@ function renderReading() {
   const input = $("#readText");
   const summary = $("#readSummary");
   const list = $("#readUnknown");
+  const bulk = $("#readBulk");
   const text = input.value;
   list.textContent = "";
 
   if (!text.trim()) {
     summary.textContent =
       "Yapıştırdığın metinde bildiğin kelimeleri sayar; bilmediklerini sözlüğe eklemene yardım eder.";
+    bulk.hidden = true;
     return;
   }
 
   const result = reading.analyze(text, readingLookup);
   if (!result.total) {
     summary.textContent = "Metinde Fince kelime bulunamadı.";
+    bulk.hidden = true;
     return;
   }
 
@@ -1335,6 +1347,12 @@ function renderReading() {
     `Tekil kelimede %${pct(result.uniqueCoverage)} (${result.uniqueKnown}/${result.uniqueTotal}).` +
     (result.learning ? ` ${result.learning} kelime sözlükte var ama henüz çalışılmamış.` : "") +
     (result.unknown ? ` ${result.unknown} kelime sözlükte yok.` : "");
+
+  const unknownUnique = result.words.filter((word) => word.status === "unknown").length;
+  bulk.hidden = unknownUnique === 0;
+  bulk.textContent = unknownUnique
+    ? `Bilinmeyenleri taslağa ekle (${unknownUnique})`
+    : "Bilinmeyenleri taslağa ekle";
 
   const pending = result.words.filter((word) => word.status !== "known").slice(0, 14);
   for (const word of pending) {
@@ -1372,6 +1390,53 @@ function renderReading() {
   }
 }
 
+/** Okuma metnindeki bilinmeyenleri tek tek eklemek yerine taslak olarak ekler. */
+const READING_BULK_LIMIT = 40;
+function addUnknownDrafts() {
+  const text = $("#readText").value;
+  if (!text.trim()) return;
+
+  const result = reading.analyze(text, readingLookup);
+  const taken = new Set(VOCAB.map((vocab) => vocab.fi.toLocaleLowerCase("fi")));
+  const fresh = result.words.filter(
+    (word) => word.status === "unknown" && !taken.has(word.word.toLocaleLowerCase("fi"))
+  );
+  if (!fresh.length) {
+    toast("Sözlüğe eklenecek yeni kelime yok.");
+    return;
+  }
+
+  const picked = fresh.slice(0, READING_BULK_LIMIT);
+  state.custom = [
+    ...(state.custom || []),
+    ...picked.map((word) => ({ fi: word.word, tr: "", lvl: "A1", cat: "okuma", draft: true })),
+  ];
+  persistCustomWords();
+  renderReading();
+  toast(
+    picked.length < fresh.length
+      ? `${picked.length} kelime taslağa eklendi (en sık geçenler; metinde ${fresh.length} bilinmeyen var).`
+      : `${picked.length} kelime taslağa eklendi; anlamlarını sözlükten tamamla.`
+  );
+}
+
+/** Taslak kelimenin Türkçesini yazar; kelime böylece çalışmaya hazır olur. */
+function fillDraft(fi, raw) {
+  const tr = String(raw || "").trim().replace(/\s+/g, " ");
+  if (!tr) {
+    toast("Türkçe anlamı yaz.");
+    return;
+  }
+  const index = (state.custom || []).findIndex((word) => word.fi === fi);
+  if (index < 0) return;
+  state.custom = state.custom.map((word, i) =>
+    i === index ? { ...word, tr, draft: false } : word
+  );
+  persistCustomWords();
+  renderReading();
+  toast(`“${fi}” çalışmaya hazır.`);
+}
+
 function renderDictionary() {
   const q = $("#dictSearch").value.trim().toLocaleLowerCase("tr");
   const cat = $("#dictCat").value;
@@ -1405,7 +1470,8 @@ function renderDictionary() {
     const tr = document.createElement("span");
     tr.className = "word-tr";
     tr.lang = "tr";
-    tr.textContent = v.tr;
+    // Taslağın anlamı henüz yok; boş bırakmak yerine beklediği görünsün.
+    tr.textContent = v.tr || "anlam yazılacak";
     main.append(fi, sep, tr);
 
     const side = document.createElement("div");
@@ -1428,9 +1494,9 @@ function renderDictionary() {
     play.addEventListener("click", () => speak(v.fi, "fi-FI"));
     if (v.custom) {
       const own = document.createElement("span");
-      own.className = "badge";
-      own.textContent = "özel";
-      own.title = "Kendi eklediğin kelime";
+      own.className = v.draft ? "badge draft" : "badge";
+      own.textContent = v.draft ? "taslak" : "özel";
+      own.title = v.draft ? "Anlamı yazılmayı bekliyor" : "Kendi eklediğin kelime";
       const del = document.createElement("button");
       del.type = "button";
       del.className = "icon-btn";
@@ -1460,6 +1526,35 @@ function renderDictionary() {
     }
 
     li.append(main, side, ex);
+
+    // Taslak satırı: anlamı buradan yazılır, kelime sonra kuyruğa girer.
+    if (v.draft) {
+      const row = document.createElement("div");
+      row.className = "draft-row";
+      const input = document.createElement("input");
+      input.type = "text";
+      input.lang = "tr";
+      input.autocomplete = "off";
+      input.placeholder = "Türkçe anlamı yaz…";
+      input.dataset.draft = v.fi;
+      input.setAttribute("aria-label", `${v.fi} kelimesinin Türkçe anlamı`);
+      const save = document.createElement("button");
+      save.type = "button";
+      save.className = "btn primary";
+      save.textContent = "Kaydet";
+      save.dataset.draftSave = v.fi;
+      const commit = () => fillDraft(v.fi, input.value);
+      save.addEventListener("click", commit);
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          commit();
+        }
+      });
+      row.append(input, save);
+      li.append(row);
+    }
+
     list.append(li);
   });
 
@@ -1946,6 +2041,7 @@ function bindEvents() {
   $("#focusPill").addEventListener("click", clearFocus);
 
   $("#readText").addEventListener("input", scheduleReading);
+  $("#readBulk").addEventListener("click", addUnknownDrafts);
 
   $("#updateReload").addEventListener("click", applyUpdate);
   $("#updateLater").addEventListener("click", () => {
