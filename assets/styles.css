@@ -782,6 +782,45 @@ input[type="checkbox"] { width: 17px; height: 17px; accent-color: var(--brand); 
   .stat-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
+/* Güncelleme bildirimi: yeni service worker hazır olduğunda alt şerit */
+.update-bar {
+  position: fixed;
+  left: 50%;
+  bottom: max(14px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: calc(100vw - 24px);
+  padding: 10px 12px 10px 16px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--bg);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.28);
+  font-size: 13.5px;
+}
+.update-bar .btn {
+  border: 0;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: var(--brand);
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.update-bar .btn:disabled { opacity: 0.6; cursor: default; }
+.update-bar .link {
+  border: 0;
+  background: none;
+  color: inherit;
+  opacity: 0.72;
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
 /* Okuma modu */
 #readText {
   width: 100%;

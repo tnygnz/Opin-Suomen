@@ -1947,6 +1947,11 @@ function bindEvents() {
 
   $("#readText").addEventListener("input", scheduleReading);
 
+  $("#updateReload").addEventListener("click", applyUpdate);
+  $("#updateLater").addEventListener("click", () => {
+    $("#updateBar").hidden = true;
+  });
+
   $("#planDate").addEventListener("change", () => {
     state.ui.planDate = $("#planDate").value;
     store.saveState(state);
@@ -2207,16 +2212,60 @@ function restoreDictionaryFilters() {
 }
 
 /* ── Başlangıç ───────────────────────────────────── */
+/* ── Güncelleme bildirimi ────────────────────────
+ * Yeni service worker "bekliyor" durumuna geçince sayfa yenileme önerir;
+ * kullanıcı onaylayınca worker etkinleşir ve sayfa bir kez yenilenir. */
+let swRegistration = null;
+let swReloading = false;
+
+function showUpdateBar(registration) {
+  swRegistration = registration;
+  const bar = $("#updateBar");
+  if (!bar || !bar.hidden) return;
+  bar.hidden = false;
+}
+
+function watchServiceWorker() {
+  if (!("serviceWorker" in navigator) || !window.isSecureContext) return;
+  const container = navigator.serviceWorker;
+
+  container
+    .register(new URL("../sw.js", import.meta.url))
+    .then((registration) => {
+      // Sayfa zaten bir worker tarafından denetleniyorsa bekleyen worker güncellemedir.
+      if (registration.waiting && container.controller) showUpdateBar(registration);
+      registration.addEventListener("updatefound", () => {
+        const installing = registration.installing;
+        if (!installing) return;
+        installing.addEventListener("statechange", () => {
+          if (installing.state === "installed" && container.controller) showUpdateBar(registration);
+        });
+      });
+    })
+    .catch((err) => console.warn("Service worker kaydedilemedi:", err));
+
+  container.addEventListener("controllerchange", () => {
+    if (!swReloading) return;
+    swReloading = false;
+    window.location.reload();
+  });
+}
+
+function applyUpdate() {
+  const waiting = swRegistration?.waiting;
+  if (!waiting) return;
+  swReloading = true;
+  waiting.postMessage({ type: "SKIP_WAITING" });
+  $("#updateText").textContent = "Yeni sürüm yükleniyor…";
+  $("#updateReload").disabled = true;
+}
+
 function init() {
   applyTheme();
   $("#storageName").textContent = store.STORAGE_KEY;
 
   // Kurulabilir + çevrimdışı: service worker yalnızca güvenli bağlamda kaydedilir.
-  if ("serviceWorker" in navigator && window.isSecureContext) {
-    navigator.serviceWorker
-      .register(new URL("../sw.js", import.meta.url))
-      .catch((err) => console.warn("Service worker kaydedilemedi:", err));
-  }
+  watchServiceWorker();
 
   // Yedekten ya da önceki oturumdan gelen kullanıcı kelimelerini sözlüğe ekle.
   applyCustomWords();

@@ -60,13 +60,18 @@ function seed({ newCard: target = null, settings = {}, byCard = {} } = {}) {
 }
 
 let bootCount = 0;
-async function boot(state) {
+async function boot(state, beforeImport = null) {
   const html = readFileSync(indexPath, "utf8");
   const dom = new JSDOM(html, { url: "http://localhost/", pretendToBeVisual: true });
   const w = dom.window;
 
   global.window = w;
   global.document = w.document;
+  try {
+    Object.defineProperty(globalThis, "navigator", { value: w.navigator, configurable: true });
+  } catch {
+    // Node sürümü izin vermiyorsa uygulama yalnızca window.navigator'ı görür.
+  }
   global.localStorage = w.localStorage;
   global.HTMLElement = w.HTMLElement;
   global.Node = w.Node;
@@ -76,6 +81,7 @@ async function boot(state) {
   global.confirm = w.confirm;
 
   w.localStorage.setItem(store.STORAGE_KEY, JSON.stringify(state));
+  if (beforeImport) beforeImport(w);
   // Her senaryo taze bir modül örneği kullanır (app.js'in modül düzeyi durumu).
   await import(`${assetUrl("app.js")}?boot=${++bootCount}`);
   await wait(80);
@@ -880,11 +886,12 @@ async function testPwaOffline() {
     put: async (req, res) => cacheStore.set(typeof req === "string" ? req : req.url, res),
     match: async (req) => cacheStore.get(typeof req === "string" ? req : req.url),
   };
+  let skipCalls = 0;
   const sandbox = {
     self: {
       location: { origin: "https://example.test" },
       addEventListener: (type, fn) => { handlers[type] = fn; },
-      skipWaiting: async () => {},
+      skipWaiting: async () => { skipCalls += 1; },
       clients: { claim: async () => {} },
     },
     caches: {
@@ -920,6 +927,14 @@ async function testPwaOffline() {
   responded = null;
   handlers.fetch({ request: { method: "POST", mode: "cors", url: "https://example.test/api" }, respondWith: (p) => { responded = p; } });
   check("GET dışı istekler önbelleğe alınmıyor", responded === null);
+
+  // Kurulum worker'ı hemen devreye sokmamalı; sayfa onay verince sokmalı.
+  await handlers.install({ waitUntil: (p) => p });
+  check("kurulum kendiliğinden devreye girmiyor", skipCalls === 0, String(skipCalls));
+  handlers.message({ data: { type: "BAŞKA" } });
+  check("ilgisiz mesaj yok sayılıyor", skipCalls === 0, String(skipCalls));
+  handlers.message({ data: { type: "SKIP_WAITING" } });
+  check("yenile mesajı worker'ı etkinleştiriyor", skipCalls === 1, String(skipCalls));
 }
 
 /* ── 19. Okuma modu ─────────────────────────────── */
@@ -961,6 +976,48 @@ async function testReadingMode() {
   await close(dom);
 }
 
+/* ── 20. Güncelleme bildirimi ───────────────────── */
+async function testUpdateBanner() {
+  console.log("\n20) Güncelleme bildirimi ve tek dokunuşla yenileme");
+  const posted = [];
+  const registration = {
+    waiting: { postMessage: (msg) => posted.push(msg) },
+    installing: null,
+    addEventListener: () => {},
+  };
+  const withController = await boot(seed(), (w) => {
+    Object.defineProperty(w, "isSecureContext", { value: true, configurable: true });
+    Object.defineProperty(w.navigator, "serviceWorker", {
+      value: { controller: {}, register: async () => registration, addEventListener: () => {} },
+      configurable: true,
+    });
+  });
+  const w = withController.window;
+
+  check("bekleyen güncelleme bildiriliyor", $(w, "#updateBar").hidden === false);
+  $(w, "#updateReload").click();
+  check("yenile yeni worker'ı etkinleştiriyor", posted.length === 1 && posted[0].type === "SKIP_WAITING", JSON.stringify(posted));
+  check("bildirim yükleniyor durumuna geçiyor", $(w, "#updateText").textContent.includes("yükleniyor"), $(w, "#updateText").textContent);
+  check("yenile düğmesi kilitleniyor", $(w, "#updateReload").disabled === true);
+  $(w, "#updateLater").click();
+  check("sonra düğmesi bildirimi gizliyor", $(w, "#updateBar").hidden === true);
+  await close(withController);
+
+  const firstInstall = await boot(seed(), (w2) => {
+    Object.defineProperty(w2, "isSecureContext", { value: true, configurable: true });
+    Object.defineProperty(w2.navigator, "serviceWorker", {
+      value: {
+        controller: null,
+        register: async () => ({ waiting: { postMessage: () => {} }, installing: null, addEventListener: () => {} }),
+        addEventListener: () => {},
+      },
+      configurable: true,
+    });
+  });
+  check("ilk kurulumda bildirim çıkmıyor", $(firstInstall.window, "#updateBar").hidden === true);
+  await close(firstInstall);
+}
+
 const tests = [
   testAlternativeTranslation,
   testExtraRepeatCard,
@@ -981,6 +1038,7 @@ const tests = [
   testEngineCompareAndPlanner,
   testPwaOffline,
   testReadingMode,
+  testUpdateBanner,
 ];
 
 for (const test of tests) {

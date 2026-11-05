@@ -84,7 +84,9 @@ kapalıyken gramer kartları sıraya girmemelidir.
   kurulabilir yapar; `sw.js` uygulama kabuğunu (HTML, CSS, tüm JS modülleri, simgeler) kurulumda önbelleğe
   alır. Gezinme istekleri ağ-öncelikli, statik dosyalar önbellek-öncelikli ve arka planda tazelenir; uçak
   modunda da uygulama açılır ve kayıtlı ilerlemeyle çalışmaya devam eder. Dosyaları değiştirdikten sonra
-  `sw.js` içindeki `CACHE` adını artırmak eski önbelleği temizler.
+  `sw.js` içindeki `CACHE` adını artırmak eski önbelleği temizler. Yeni sürüm arka planda kurulunca sayfa
+  "Yeni sürüm hazır" şeridi gösterir; "Yenile" tek dokunuşla worker'ı etkinleştirip sayfayı yeniler, "Sonra"
+  şeridi gizler ve güncelleme bir sonraki açılışta olur.
 - **Yazma modu:** Kelime ve boşluk kartlarında cevap klavyeyle yazılır ve toleranslı karşılaştırılır:
   büyük/küçük harf, noktalama ve ä/ö/å ayrımı yok sayılır, 5+ harfli cevaplarda tek harflik yazım hatası kabul edilir.
   Kelime kartlarında `/` ile ayrılmış alternatif çevirilerden herhangi biri kabul edilir (ör. `erkek` ya da

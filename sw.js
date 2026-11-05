@@ -6,7 +6,7 @@
  * önbellekler silinir; bu yüzden dosya değişikliklerinde CACHE adını artır.
  */
 
-const CACHE = "suomi-tr-v2";
+const CACHE = "suomi-tr-v3";
 
 const CORE = [
   "./",
@@ -24,13 +24,13 @@ const CORE = [
   "assets/apple-touch-icon.png",
 ];
 
+// Yeni sürüm kurulunca hemen devreye girmez: sayfa "Yenile" diyene kadar bekler.
 self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches
-      .open(CACHE)
-      .then((cache) => cache.addAll(CORE))
-      .then(() => self.skipWaiting())
-  );
+  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(CORE)));
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SKIP_WAITING") self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
