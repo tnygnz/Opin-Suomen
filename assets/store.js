@@ -202,10 +202,10 @@ export function exportBackup(state) {
 
 /**
  * Kendi eklenen kelimelerden taşınabilir bir kelime paketi üretir.
- * Kart ilerlemesi pakete girmez: dosya başka cihazda yalnızca sözlüğe eklenir.
- * Kelime yoksa null döner.
+ * `cards` verilirse yalnızca paketteki kelimelere ait kart ilerlemesi de pakete girer;
+ * verilmezse dosya başka cihazda yalnızca sözlüğe eklenir. Kelime yoksa null döner.
  */
-export function buildWordPack(words) {
+export function buildWordPack(words, cards = null) {
   const custom = (words || [])
     .map((word) => {
       const fi = String(word?.fi || "").trim().replace(/\s+/g, " ");
@@ -221,14 +221,26 @@ export function buildWordPack(words) {
     app: "suomi-tr",
     pack: "Kendi kelimelerim",
     exportedAt: new Date().toISOString(),
-    state: { cards: {}, custom },
+    state: { cards: packCards(custom, cards), custom },
   };
 }
 
-/** Kendi kelimelerini paket olarak indirir; eklenen kelime sayısını döndürür. */
-export function exportWordPack(words) {
-  const payload = buildWordPack(words);
-  if (!payload) return 0;
+/** Pakete yalnızca paketteki kelimelere ait kartlar girer; başka kelimelerin ilerlemesi taşınmaz. */
+function packCards(custom, cards) {
+  if (!cards || typeof cards !== "object") return {};
+  const words = new Set(custom.map((word) => word.fi));
+  const out = {};
+  for (const [key, card] of Object.entries(cards)) {
+    const fi = typeof card?.id === "string" ? card.id : key.split("|")[0];
+    if (words.has(fi)) out[key] = card;
+  }
+  return out;
+}
+
+/** Kendi kelimelerini paket olarak indirir; taşınan kelime ve kart sayısını döndürür. */
+export function exportWordPack(words, cards = null) {
+  const payload = buildWordPack(words, cards);
+  if (!payload) return { words: 0, cards: 0 };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -238,14 +250,15 @@ export function exportWordPack(words) {
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 2000);
-  return payload.state.custom.length;
+  return { words: payload.state.custom.length, cards: Object.keys(payload.state.cards).length };
 }
 
 /** Yedeği içe aktarır; doğrulama başarısızsa hata fırlatır. */
 /**
- * Yalnızca kelime taşıyan yedeği (kelime paketi) ayırır.
- * Kart ilerlemesi taşıyan tam yedeklerde null döner; onlar eskisi gibi
- * ilerlemenin yerine yazılır. Paketler mevcut duruma eklenir.
+ * Kelime paketini ayırır: `{ words, cards }` döner, yedek değilse null.
+ * Paket kendi `pack` adını taşır; kart taşısa bile ilerlemenin yerine yazılmaz,
+ * kelimelere ve o kelimelerin kartlarına eklenir. `pack` adı olmayan ve kart
+ * taşıyan dosya tam yedektir: null döner, eskisi gibi ilerlemenin yerine yazılır.
  */
 export function readWordPack(text) {
   const parsed = JSON.parse(text);
@@ -253,9 +266,11 @@ export function readWordPack(text) {
   if (!incoming || typeof incoming !== "object") {
     throw new Error("Dosya bir Suomi–Türkçe yedeği gibi görünmüyor.");
   }
-  const cards = incoming.cards && typeof incoming.cards === "object" ? Object.keys(incoming.cards) : [];
-  if (cards.length > 0 || !Array.isArray(incoming.custom)) return null;
-  return incoming.custom;
+  const cards = incoming.cards && typeof incoming.cards === "object" ? incoming.cards : {};
+  const isPack = typeof parsed.pack === "string" && parsed.pack.trim() !== "";
+  if (!isPack && Object.keys(cards).length > 0) return null;
+  if (!Array.isArray(incoming.custom)) return null;
+  return { words: incoming.custom, cards: isPack ? cards : {} };
 }
 
 export function importBackup(text) {

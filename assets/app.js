@@ -137,8 +137,10 @@ function addCustomWord() {
 /**
  * Kelime paketini mevcut duruma katar: kartlar, ayarlar ve seri korunur.
  * Aynı kelime (yerleşik sözlük veya paketin kendi içi) ikinci kez eklenmez.
+ * Paket kart taşıyorsa yalnızca paketteki kelimelerin kartları alınır ve yalnızca
+ * yereldekinden daha çok çalışılmış kart, yerel kartın yerine geçer.
  */
-function mergeWordPack(words) {
+function mergeWordPack(words, cards) {
   const taken = new Set(VOCAB.map((vocab) => vocab.fi.toLocaleLowerCase("fi")));
   const fresh = [];
   let skipped = 0;
@@ -162,11 +164,24 @@ function mergeWordPack(words) {
         : null,
     });
   }
-  if (fresh.length) {
-    state.custom = [...(state.custom || []), ...fresh];
-    persistCustomWords();
+  let restored = 0;
+  if (cards && typeof cards === "object") {
+    const packWords = new Set(
+      (words || []).map((word) => String(word?.fi || "").trim()).filter(Boolean),
+    );
+    for (const [key, card] of Object.entries(cards)) {
+      if (!card || typeof card !== "object") continue;
+      const fi = typeof card.id === "string" ? card.id : key.split("|")[0];
+      if (!packWords.has(fi)) continue;
+      const local = state.cards[key];
+      if (local && (Number(local.reps) || 0) >= (Number(card.reps) || 0)) continue;
+      state.cards[key] = card;
+      restored += 1;
+    }
   }
-  return { added: fresh.length, skipped };
+  if (fresh.length) state.custom = [...(state.custom || []), ...fresh];
+  if (fresh.length || restored) persistCustomWords();
+  return { added: fresh.length, skipped, restored };
 }
 
 function removeCustomWord(fi) {
@@ -2292,8 +2307,17 @@ function bindEvents() {
 
   // Kendi kelimeler yalnızca kelime paketi olarak indirilir; başka cihazda ilerlemeyi ezmeden eklenir.
   $("#wordsExportBtn").addEventListener("click", () => {
-    const count = store.exportWordPack(state.custom);
-    toast(count ? `${count} kelime paket olarak indirildi.` : "Sözlükte kendi kelimen yok.");
+    const withProgress = Boolean($("#wordsExportProgress")?.checked);
+    const { words, cards } = store.exportWordPack(state.custom, withProgress ? state.cards : null);
+    if (!words) {
+      toast("Sözlükte kendi kelimen yok.");
+      return;
+    }
+    toast(
+      cards
+        ? `${words} kelime ve ${cards} kart ilerlemesi paket olarak indirildi.`
+        : `${words} kelime paket olarak indirildi.`,
+    );
   });
 
   $("#importInput").addEventListener("change", async (e) => {
@@ -2301,14 +2325,17 @@ function bindEvents() {
     if (!file) return;
     try {
       const text = await file.text();
-      // Kelime paketi yalnızca sözlüğe eklenir; ilerleme ve ayarlar olduğu gibi kalır.
+      // Kelime paketi sözlüğe eklenir; ayarlar ve mevcut kart ilerlemesi olduğu gibi kalır.
       const pack = store.readWordPack(text);
       if (pack) {
-        const { added, skipped } = mergeWordPack(pack);
+        const { added, skipped, restored } = mergeWordPack(pack.words, pack.cards);
+        const progress = restored ? `, ${restored} kart ilerlemesi alındı` : "";
         toast(
           added
-            ? `${added} kelime eklendi${skipped ? `, ${skipped} tanesi zaten vardı` : ""}. İlerlemen korundu.`
-            : "Yeni kelime yok; paketteki kelimeler sözlükte zaten var."
+            ? `${added} kelime eklendi${skipped ? `, ${skipped} tanesi zaten vardı` : ""}${progress}. İlerlemen korundu.`
+            : restored
+              ? `Yeni kelime yok; ${restored} kart ilerlemesi alındı.`
+              : "Yeni kelime yok; paketteki kelimeler sözlükte zaten var."
         );
         return;
       }

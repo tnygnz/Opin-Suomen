@@ -438,8 +438,86 @@ function testWordPackExport() {
   check("örnek cümle korundu", pack?.state.custom[0].ex?.length === 2);
   check("örnek cümlesiz kelimede ex alanı yok", !("ex" in pack.state.custom[1]));
   const back = store.readWordPack(JSON.stringify(pack));
-  check("dışa aktarılan dosya kelime paketi olarak okunuyor", Array.isArray(back) && back.length === 2);
+  check("dışa aktarılan dosya kelime paketi olarak okunuyor", back?.words?.length === 2);
+  check("kartsız pakette kart yok", Object.keys(back?.cards || {}).length === 0);
   check("kelimesiz sözlükte paket üretilmiyor", store.buildWordPack([]) === null);
+
+  // İsteğe bağlı ilerleme: yalnızca paketteki kelimelerin kartları taşınır.
+  const cards = {
+    "kaali|fi-tr": { id: "kaali", dir: "fi-tr", state: "review", step: 0, due: 1, interval: 6, ease: 2.5, reps: 5, lapses: 1, last: 1 },
+    "talo|fi-tr": { id: "talo", dir: "fi-tr", state: "review", step: 0, due: 1, interval: 9, ease: 2.5, reps: 9, lapses: 0, last: 1 },
+  };
+  const withCards = store.buildWordPack(words, cards);
+  check("istenince kart ilerlemesi pakete giriyor", withCards?.state.cards["kaali|fi-tr"]?.reps === 5);
+  check("paketteki kelime sayısı değişmiyor", withCards?.state.custom.length === 2, String(withCards?.state.custom.length));
+  check("pakette olmayan kelimenin kartı taşınmıyor", !("talo|fi-tr" in withCards.state.cards));
+  const backCards = store.readWordPack(JSON.stringify(withCards));
+  check(
+    "kartlı paket de paket olarak okunuyor",
+    backCards?.cards["kaali|fi-tr"]?.reps === 5 && backCards?.words?.length === 2,
+    JSON.stringify(Object.keys(backCards?.cards || {})),
+  );
+  const fullBackup = { app: "suomi-tr", state: { cards, custom: words } };
+  check("tam yedek paket sayılmıyor", store.readWordPack(JSON.stringify(fullBackup)) === null);
+  check(
+    "eski kartsız paket hâlâ okunuyor",
+    store.readWordPack(JSON.stringify({ app: "suomi-tr", state: { cards: {}, custom: words } }))?.words.length === words.length,
+  );
+}
+
+/* ── 8d. Kart ilerlemesi paketle taşınır ─────────────────────── */
+async function testWordPackProgressImport() {
+  console.log("\n8d) Paketle gelen kart ilerlemesi uygulanır, ileri yerel kart korunur");
+  const vocabLen = VOCAB.length;
+  const state = seed();
+  const firstKey = Object.keys(state.cards)[0];
+  state.cards[firstKey].reps = 9; // yerelde ileri bir kart: paket onu geriye çekmemeli
+  const dom = await boot(state);
+  const w = dom.window;
+  const before = await savedState(w);
+  const firstInterval = before.cards[firstKey].interval;
+
+  const pack = {
+    app: "suomi-tr",
+    pack: "Kendi kelimelerim",
+    state: {
+      cards: {
+        [firstKey]: { ...before.cards[firstKey], reps: 3, interval: 2 },
+        "koho|fi-tr": { id: "koho", dir: "fi-tr", state: "review", step: 0, due: 1, interval: 12, ease: 2.5, reps: 4, lapses: 2, last: 1 },
+        "talo|fi-tr": { id: "talo", dir: "fi-tr", state: "review", step: 0, due: 1, interval: 3, ease: 2.5, reps: 9, lapses: 0, last: 1 },
+      },
+      custom: [{ fi: "koho", tr: "deneme", lvl: "A1", cat: "yemek" }],
+    },
+  };
+
+  const input = $(w, "#importInput");
+  Object.defineProperty(input, "files", {
+    value: [{ text: async () => JSON.stringify(pack) }],
+    configurable: true,
+  });
+  input.dispatchEvent(new w.Event("change"));
+  await wait(300);
+
+  const after = await savedState(w);
+  check("paket kelimesi eklendi", after.custom.some((c) => c.fi === "koho"));
+  check("paket kartı yeni kelimeye uygulandı", after.cards["koho|fi-tr"]?.reps === 4);
+  check(
+    "yerelde daha ileri kart korundu",
+    after.cards[firstKey]?.reps === 9 && after.cards[firstKey]?.interval === firstInterval,
+    JSON.stringify(after.cards[firstKey]),
+  );
+  check(
+    "pakette olmayan kelimenin kartı değişmedi",
+    after.cards["talo|fi-tr"]?.interval === before.cards["talo|fi-tr"].interval,
+    String(after.cards["talo|fi-tr"]?.interval),
+  );
+  check(
+    "bildirim alınan ilerlemeyi bildiriyor",
+    $(w, "#toast").textContent.includes("kart ilerlemesi"),
+    $(w, "#toast").textContent,
+  );
+  await close(dom);
+  VOCAB.length = vocabLen;
 }
 
 /* ── 9. Hâl eki verisi ve kart üretimi ───────────────────────── */
@@ -1160,6 +1238,7 @@ const tests = [
   testBackupImport,
   testWordPackImport,
   testWordPackExport,
+  testWordPackProgressImport,
   testFormData,
   testFormCard,
   testConjData,
