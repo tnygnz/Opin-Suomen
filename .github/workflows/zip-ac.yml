@@ -1,35 +1,101 @@
 name: zip-ac
-'on': workflow_dispatch
+
+# Zip dosyası depoya girmeden çalışır: arşiv ya son sürüm ekinden (release asset)
+# ya da verilen bir adresten indirilir, doğrulanır, güvenli biçimde açılır ve
+# değişiklik varsa commit edilir. Depoya yalnızca açılmış dosyalar girer.
+'on':
+  workflow_dispatch:
+    inputs:
+      kaynak:
+        description: 'Zip kaynağı'
+        type: choice
+        options:
+          - surum
+          - url
+        default: surum
+      surum:
+        description: 'Release etiketi (boş = en son sürüm)'
+        type: string
+        default: ''
+      dosya:
+        description: 'Release ekinin adı'
+        type: string
+        default: 'sanat-web-yukle.zip'
+      url:
+        description: 'Zip adresi (kaynak=url iken zorunlu)'
+        type: string
+        default: ''
+
 permissions:
   contents: write
+
+concurrency:
+  group: zip-ac
+  cancel-in-progress: false
+
 jobs:
   ac:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Zip'i aç (varsa)
-        id: unzip
+
+      - name: Zip indir
+        id: indir
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          KAYNAK: ${{ inputs.kaynak }}
+          SURUM: ${{ inputs.surum }}
+          DOSYA: ${{ inputs.dosya }}
+          URL: ${{ inputs.url }}
         run: |
           set -euo pipefail
-          out="${GITHUB_OUTPUT:-/dev/null}"
-          if [ ! -f sanat-web-yukle.zip ]; then
-            echo "Zip yok; yapılacak iş kalmadı (idempotent çıkış)."
-            echo "done=false" >> "$out"
+          arsiv="$RUNNER_TEMP/girdi.zip"
+          if [ "$KAYNAK" = "url" ]; then
+            if [ -z "$URL" ]; then
+              echo "::error::kaynak=url icin 'url' girdisi gerekli"
+              exit 1
+            fi
+            curl -fsSL --retry 3 --max-time 180 "$URL" -o "$arsiv"
+          else
+            if [ -n "$SURUM" ]; then
+              gh release download "$SURUM" --pattern "$DOSYA" --dir "$RUNNER_TEMP" --clobber
+            else
+              gh release download --pattern "$DOSYA" --dir "$RUNNER_TEMP" --clobber
+            fi
+            arsiv="$RUNNER_TEMP/$DOSYA"
+          fi
+          [ -s "$arsiv" ] || { echo "::error::arsiv bos ya da indirilemedi"; exit 1; }
+          unzip -tq "$arsiv" >/dev/null || { echo "::error::gecerli bir zip degil"; exit 1; }
+          echo "arsiv: $(wc -c <"$arsiv") bayt"
+          echo "yol=$arsiv" >>"$GITHUB_OUTPUT"
+
+      - name: Dogrula, ac ve commit et
+        env:
+          ARSIV: ${{ steps.indir.outputs.yol }}
+        run: |
+          set -euo pipefail
+          # 1) Yol kacisi, mutlak yol veya ters bolu iceren girdileri reddet
+          if unzip -Z1 "$ARSIV" | grep -Eq '(^/|(^|/)\.\.(/|$)|\\)'; then
+            echo "::error::arsivde guvenli olmayan yol var; hicbir sey acilmadi"
+            unzip -Z1 "$ARSIV" | grep -En '(^/|(^|/)\.\.(/|$)|\\)' | head -5
+            exit 1
+          fi
+          # 2) Gecici dizine ac; sembolik baglanti, .git ve akis dizinleri disarida kalir
+          rm -rf "$RUNNER_TEMP/ac"
+          mkdir -p "$RUNNER_TEMP/ac"
+          unzip -q -o "$ARSIV" -d "$RUNNER_TEMP/ac"
+          rsync -a --no-links \
+            --exclude='.git/' \
+            --exclude='.github/workflows/' \
+            "$RUNNER_TEMP/ac"/ ./
+          # 3) Degisiklik varsa tek commit, yoksa idempotent cikis
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "Degisiklik yok (idempotent cikis)."
             exit 0
           fi
-          unzip -o sanat-web-yukle.zip
-          rm -f sanat-web-yukle.zip
-          echo "done=true" >> "$out"
-      - name: Commit ve push
-        if: steps.unzip.outputs.done == 'true'
-        run: |
-          set -euo pipefail
+          git status --porcelain
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
-          if git diff --cached --quiet; then
-            echo "Değişiklik yok; commit gerekmiyor (idempotent çıkış)."
-            exit 0
-          fi
-          git commit -m "sanat: zip'ten çıkar"
-          git push
+          git commit -m "sanat: zip'ten cikar ($(basename "$ARSIV"))"
+          git push origin "HEAD:${GITHUB_REF_NAME:-main}"
