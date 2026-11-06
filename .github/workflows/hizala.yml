@@ -1,0 +1,27 @@
+name: hizala
+'on':
+  push:
+    paths:
+      - '.github/workflows/hizala.yml'
+permissions:
+  contents: write
+jobs:
+  hizala:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Medya bloğunu taşı
+        run: python3 .github/scripts/hizala.py
+      - name: Commit ve push
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm -q .github/workflows/hizala.yml .github/scripts/hizala.py
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Değişiklik yok"
+            exit 0
+          fi
+          git commit -m "sanat: styles.css medya bloğu .tabs kuralının altına"
+          git push
