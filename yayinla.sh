@@ -1,30 +1,45 @@
 #!/usr/bin/env bash
-# sanat/ altindaki degisiklikleri TEK komutla GitHub Pages'e yayimlar.
+# sanat/ altindaki degisiklikleri TEK komutla hedef depoya yayimlar.
 #
-#   ./yayinla.sh "sanat: kisa degisiklik ozeti"
-#   KURU=1 ./yayinla.sh              # token gerekmez: yalnizca plan
-#   TEST_YOK=1 ./yayinla.sh "..."    # test kapisini atla
-#   DOGRULA=1 ./yayinla.sh "..."     # yayindan sonra canli baytlari da dogrula
-#   SILME_ONAY=1 ./yayinla.sh "..."  # yerelde olmayan uzak dosyalari da sil
+#   ./yayinla.sh "sanat: kisa degisiklik ozeti"     # varsayilan: HEDEF=yedek
+#   HEDEF=site ./yayinla.sh "..."                   # canli site (GitHub Pages)
+#   KURU=1 ./yayinla.sh "..."                       # token gerekmez (site hedefinde)
+#   TEST_YOK=1 ./yayinla.sh "..."                   # test kapisini atla
+#   DOGRULA=1 ./yayinla.sh "..."                    # yayindan sonra canli baytlari dogrula
+#   SILME_ONAY=1 ./yayinla.sh "..."                 # yerelde olmayan uzak dosyalari da sil
 #
-# Neden API: bu depoda yerel gecmis ile uzak gecmis iliskisiz (ortak ata yok),
-# bu yuzden duz `git push` "non-fast-forward" ile reddedilir. Betik Git Data
+# Hedefler:
+#   yedek : tnygnz/Opin-Suomen   (ozel depo, Pages yok)  -> varsayilan
+#   site  : tnygnz/suomi-kartat  (GitHub Pages)
+# REPO / SAYFA / BRANCH / DAL degiskenleri tek tek ezilebilir.
+#
+# Neden API: yerel gecmis ile uzak gecmisler iliskisiz (ortak ata yok), bu
+# yuzden duz `git push` "non-fast-forward" ile reddedilir. Betik Git Data
 # API'siyle uzak agacin uzerine TEK commit uretir; uzak gecmis yeniden yazilmaz.
 #
 # Kimlik: token yalnizca GH_TOKEN ortam degiskeninden okunur. Ekrana basilmaz,
 # argv'ye konmaz, depoya yazilmaz (curl --config + gecici, chmod 600 dosya).
 set -uo pipefail
 
-REPO=${REPO:-tnygnz/suomi-kartat}
+REPO=${REPO:-}
 BRANCH=${BRANCH:-main}
 DAL=${DAL:-sanat}
+HEDEF=${HEDEF:-yedek}
 KURU=${KURU:-0}
 TEST_YOK=${TEST_YOK:-0}
 SILME_ONAY=${SILME_ONAY:-0}
 DOGRULA=${DOGRULA:-0}
-SAYFA=${SAYFA:-https://tnygnz.github.io/suomi-kartat/sanat/}
-MSG=${1:-${MSG:-"sanat: site guncellemesi"}}
+MSG=${1:-${MSG:-"sanat: guncelleme"}}
+
+unset SAYFA_DEFAULT
+case "$HEDEF" in
+  yedek) REPO=${REPO:-tnygnz/Opin-Suomen};  SAYFA=${SAYFA:-} ;;
+  site)  REPO=${REPO:-tnygnz/suomi-kartat}; SAYFA=${SAYFA:-https://tnygnz.github.io/suomi-kartat/sanat/} ;;
+  *) printf 'HEDEF gecersiz: %s (site | yedek)\n' "$HEDEF" >&2; exit 2 ;;
+esac
+
 API="https://api.github.com/repos/$REPO"
+REF="refs/remotes/$HEDEF/$BRANCH"
 
 SRC=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) || exit 2
 cd "$SRC" || exit 2
@@ -49,29 +64,50 @@ for p in sys.argv[2].split("."):
 print(d if isinstance(d, str) and d else "")' "$1" "$2"
 }
 
+# Hedef deponun dalini yerel bir ref'e indirir. Ozel depo icin GH_TOKEN gerekir;
+# token argv'ye girmez, yalnizca GIT_CONFIG_VALUE_0 ortam degiskeninde durur.
+uzak_ref() {
+  local url="https://github.com/$REPO.git"
+  if [ -n "${GH_TOKEN:-}" ]; then
+    GIT_TERMINAL_PROMPT=0 GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=http.extraHeader \
+    GIT_CONFIG_VALUE_0="Authorization: Bearer $GH_TOKEN" \
+      git fetch -q --no-tags "$url" "+refs/heads/$BRANCH:$REF"
+  else
+    GIT_TERMINAL_PROMPT=0 \
+      git fetch -q --no-tags "$url" "+refs/heads/$BRANCH:$REF"
+  fi
+}
+
 # --- 1) uzak taban -------------------------------------------------------
-git fetch -q origin "$BRANCH" 2>/dev/null || die "origin/$BRANCH alinamadi (git remote / ag)" 2
-TABAN=$(git rev-parse "origin/$BRANCH" 2>/dev/null) || die "origin/$BRANCH cozulemedi" 2
+uzak_ref 2>/dev/null || {
+  if [ -n "${GH_TOKEN:-}" ]; then
+    die "hedef dal alinamadi: $REPO $BRANCH
+(Token geçersiz olabilir ya da bu depoya 'Contents: Read' izni yok.)" 2
+  fi
+  die "hedef dal alinamadi: $REPO $BRANCH
+(Ozel depo icin GH_TOKEN gerekli; HEDEF=site ile token'siz plan alinabilir.)" 2
+}
+TABAN=$(git rev-parse "$REF" 2>/dev/null) || die "hedef dal cozulemedi: $REF" 2
 
 # --- 2) degisen ve silinen dosyalar -------------------------------------
 DEGISEN=()
 while IFS= read -r f; do
   [ -n "$f" ] && [ -f "$f" ] && DEGISEN+=("$f")
 done < <(
-  { git diff --name-only "origin/$BRANCH" -- "$DAL"
+  { git diff --name-only "$REF" -- "$DAL"
     git ls-files --others --exclude-standard -- "$DAL"; } | sort -u
 )
 
 SILINEN=()
 while IFS= read -r f; do
   [ -n "$f" ] && [ ! -f "$f" ] && SILINEN+=("$f")
-done < <(git ls-tree -r --name-only "origin/$BRANCH" -- "$DAL")
+done < <(git ls-tree -r --name-only "$REF" -- "$DAL")
 
-say "Depo : $REPO · dal: $BRANCH · taban: ${TABAN:0:12}"
+say "Hedef: $HEDEF · depo: $REPO · dal: $BRANCH · taban: ${TABAN:0:12}"
 say "Dizin: $DAL/ · degisen: ${#DEGISEN[@]} · uzakta olup yerelde olmayan: ${#SILINEN[@]}"
 
 if [ "${#DEGISEN[@]}" -eq 0 ] && [ "${#SILINEN[@]}" -eq 0 ]; then
-  say "Yayinlanacak degisiklik yok (uzak $BRANCH ile ayni)."
+  say "Yayinlanacak degisiklik yok (hedef $BRANCH ile ayni)."
   exit 0
 fi
 
@@ -106,6 +142,7 @@ if [ "$KURU" = "1" ]; then
   say "  POST /git/trees            base_tree=${TABAN:0:12}"
   say "  POST /git/commits          tek ebeveyn=${TABAN:0:12}"
   say "  PATCH /git/refs/heads/$BRANCH"
+  say "  hedef: $HEDEF ($REPO)"
   say "  mesaj: $MSG"
   exit 0
 fi
@@ -138,13 +175,13 @@ api() { # api YONTEM YOL CIKTI [GOVDE]  -> HTTP kodu
 
 # --- 6) tek commit ------------------------------------------------------
 say ""
-say "Yayinlaniyor..."
+say "Yayinlaniyor: $HEDEF ($REPO)"
 COMMIT=""
 deneme=0
 while [ "$deneme" -lt 3 ]; do
   deneme=$((deneme + 1))
-  git fetch -q origin "$BRANCH" 2>/dev/null || true
-  TABAN=$(git rev-parse "origin/$BRANCH") || die "origin/$BRANCH cozulemedi" 2
+  uzak_ref 2>/dev/null || true
+  TABAN=$(git rev-parse "$REF") || die "hedef dal cozulemedi: $REF" 2
 
   kod=$(api GET "/git/commits/$TABAN" "$TMP/taban.json")
   [ "$kod" = "200" ] || die "taban commit okunamadi (HTTP $kod): $(head -c 200 "$TMP/taban.json")" 1
@@ -214,16 +251,21 @@ done
 
 say ""
 say "SONUC: tek commit ${COMMIT:0:12}"
+say "  hedef : $HEDEF ($REPO)"
 say "  commit: https://github.com/$REPO/commit/$COMMIT"
-say "  site  : $SAYFA (Pages 1-3 dakikada guncellenir)"
+if [ -n "$SAYFA" ]; then
+  say "  site  : $SAYFA (Pages 1-3 dakikada guncellenir)"
+else
+  say "  site  : yok (bu hedefte Pages yayini tanimli degil)"
+fi
 
 # --- 7) uzak dogrulama ---------------------------------------------------
 say ""
 say "Uzak dogrulama:"
-git fetch -q origin "$BRANCH" 2>/dev/null || true
+uzak_ref 2>/dev/null || true
 hata=0
 for f in "${DEGISEN[@]}"; do
-  uzak=$(git rev-parse "origin/$BRANCH:$f" 2>/dev/null || echo "?")
+  uzak=$(git rev-parse "$REF:$f" 2>/dev/null || echo "?")
   yerel=$(git hash-object "$f" 2>/dev/null || echo "?")
   if [ "$uzak" = "$yerel" ] && [ "$uzak" != "?" ]; then
     say "  ok    $f ${uzak:0:10}"
@@ -233,7 +275,7 @@ for f in "${DEGISEN[@]}"; do
   fi
 done
 for f in "${SILINEN[@]}"; do
-  if git cat-file -e "origin/$BRANCH:$f" 2>/dev/null; then
+  if git cat-file -e "$REF:$f" 2>/dev/null; then
     say "  FAIL  silinmedi: $f"
     hata=1
   else
@@ -244,21 +286,25 @@ done
 # --- 8) istege bagli canli kontrol --------------------------------------
 if [ "$DOGRULA" = "1" ] && [ "${#DEGISEN[@]}" -gt 0 ]; then
   say ""
-  say "Canli kontrol: $SAYFA (en fazla 120 sn)"
-  for f in "${DEGISEN[@]}"; do
-    goreli=${f#"$DAL"/}
-    canli=0
-    for _ in $(seq 1 12); do
-      if curl -sS -m 20 "$SAYFA$goreli?cb=$(date +%s)" -o "$TMP/canli" 2>/dev/null \
-        && cmp -s "$TMP/canli" "$f"; then
-        canli=1
-        break
-      fi
-      sleep 10
+  if [ -n "$SAYFA" ]; then
+    say "Canli kontrol: $SAYFA (en fazla 120 sn)"
+    for f in "${DEGISEN[@]}"; do
+      goreli=${f#"$DAL"/}
+      canli=0
+      for _ in $(seq 1 12); do
+        if curl -sS -m 20 "$SAYFA$goreli?cb=$(date +%s)" -o "$TMP/canli" 2>/dev/null \
+          && cmp -s "$TMP/canli" "$f"; then
+          canli=1
+          break
+        fi
+        sleep 10
+      done
+      if [ "$canli" = "1" ]; then say "  ok    canli = yerel: $goreli"
+      else say "  BEKLE Pages henuz eski: $goreli (birkac dakika sonra tekrar bak)"; fi
     done
-    if [ "$canli" = "1" ]; then say "  ok    canli = yerel: $goreli"
-    else say "  BEKLE Pages henuz eski: $goreli (birkac dakika sonra tekrar bak)"; fi
-  done
+  else
+    say "Canli kontrol atlandi: $HEDEF hedefinde Pages adresi yok."
+  fi
 fi
 
 if [ "$hata" -ne 0 ]; then
@@ -267,4 +313,4 @@ if [ "$hata" -ne 0 ]; then
   exit 1
 fi
 say ""
-say "Tamam: $BRANCH guncel."
+say "Tamam: $REPO ($BRANCH) guncel."
