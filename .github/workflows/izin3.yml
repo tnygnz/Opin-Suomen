@@ -1,0 +1,27 @@
+name: izin3
+'on':
+  push:
+    paths:
+      - '.github/workflows/izin3.yml'
+permissions:
+  contents: write
+jobs:
+  izin3:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: chmod +x ve akis dosyasini sil
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          chmod +x yayinla.sh
+          git rm -q .github/workflows/izin3.yml
+          git add -A
+          git update-index --chmod=+x yayinla.sh
+          if git diff --cached --quiet; then
+            echo "degisiklik yok"
+            exit 0
+          fi
+          git commit -m "yayinla.sh modu 100755"
+          git push
