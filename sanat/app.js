@@ -1330,7 +1330,7 @@
         '<div class="card hero">' +
           '<div class="ring" style="--p:' + pct + '%"><span>' + done + "<small>/" + goal + "</small></span></div>" +
           '<div class="hero-text"><h1>' + greeting() + "</h1>" +
-            "<p>" + (due ? "<b>" + due + "</b> kart tekrar bekliyor." : "Tekrar borcun yok 🎉") + "</p>" +
+            "<p>" + (due ? "<b>" + due + "</b> kart tekrar bekliyor." : "Tekrar borcun yok " + ico("test", "ico-inline")) + "</p>" +
             '<p class="muted small">Seri: ' + state.streak.days + " gün · Öğrenilen: " + learned + "/" + WORDS.length + "</p>" +
           "</div>" +
         "</div>" +
