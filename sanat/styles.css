@@ -755,6 +755,16 @@ input { font: inherit; }
   backdrop-filter: blur(16px);
   border-top: 1px solid var(--line);
 }
+/* Geniş ekran: sekme çubuğu içerik kolonuyla (720px) aynı genişlikte ortalanır;
+   mobilde tam genişlik korunur. */
+@media (min-width: 760px) {
+  .tabs {
+    left: 0; right: 0;
+    max-width: 720px;
+    margin: 0 auto;
+    border-radius: 14px 14px 0 0;
+  }
+}
 .tabs button {
   position: relative;
   display: grid;
@@ -1067,16 +1077,5 @@ body {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
-  }
-}
-
-/* Geniş ekran: sekme çubuğu içerik kolonuyla (720px) aynı genişlikte ortalanır;
-   mobilde tam genişlik korunur. */
-@media (min-width: 760px) {
-  .tabs {
-    left: 0; right: 0;
-    max-width: 720px;
-    margin: 0 auto;
-    border-radius: 14px 14px 0 0;
   }
 }
