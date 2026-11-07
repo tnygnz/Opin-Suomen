@@ -495,6 +495,13 @@ input { font: inherit; }
 .chip-btn.weak { border-color: rgba(138, 90, 18, 0.4); color: #8a5a12; }
 .chip-btn.weak.on { background: rgba(138, 90, 18, 0.16); border-color: var(--amber); color: #7c4a22; }
 
+/* ---------------- kelime paketleri ---------------- */
+.packs .rows { margin-top: 12px; }
+.pack-row { align-items: center; }
+.pack-row b { font-size: 14.5px; }
+.pack-add { margin-top: 0; padding: 8px 12px; font-size: 13px; white-space: nowrap; }
+.pack-note { margin: 10px 0; font-size: 13px; color: #1d4b39; }
+
 /* ---------------- tips ---------------- */
 .tips h2 { font-size: 20px; margin: 12px 0 6px; }
 .tips h3 { font-size: 15px; margin: 24px 0 8px; color: #1d4b39; }
@@ -748,7 +755,7 @@ input { font: inherit; }
   bottom: 0; left: 0; right: 0;
   z-index: 30;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 2px;
   padding: 6px 10px calc(9px + env(safe-area-inset-bottom));
   background: rgba(244, 241, 233, 0.94);

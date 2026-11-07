@@ -1,0 +1,158 @@
+[
+ {
+  "file": "samalla-kartalla-1-luku-1.json",
+  "pack": "Samalla kartalla 1 · Luku 1 — Koti ja asuminen (A2–B1)",
+  "count": 64,
+  "lvl": "A2–B1"
+ },
+ {
+  "file": "samalla-kartalla-1-luku-2.json",
+  "pack": "Samalla kartalla 1 · Luku 2 — Minä ja muut: perhe, suku, ihmissuhteet (A2–B1)",
+  "count": 66,
+  "lvl": "A2–B1"
+ },
+ {
+  "file": "samalla-kartalla-1-luku-3.json",
+  "pack": "Samalla kartalla 1 · Luku 3 — Lähdössä, menossa ja tulossa: matka, liikenne, suunnat (A2–B1)",
+  "count": 70,
+  "lvl": "A2–B1"
+ },
+ {
+  "file": "samalla-kartalla-1-luku-4.json",
+  "pack": "Samalla kartalla 1 · Luku 4 — Me kuluttajat: raha, ostokset, kuluttaminen (A2–B1)",
+  "count": 71,
+  "lvl": "A2–B1"
+ },
+ {
+  "file": "samalla-kartalla-1-luku-5.json",
+  "pack": "Samalla kartalla 1 · Luku 5 — Vaihdetaan vapaalle: vapaa-aika, harrastukset, kulttuuri (A2–B1)",
+  "count": 70,
+  "lvl": "A2–B1"
+ },
+ {
+  "file": "samalla-kartalla-1-luku-6.json",
+  "pack": "Samalla kartalla 1 · Luku 6 — Työ tekijäänsä kiittää: koulutus, työ, ammatti (A2–B1)",
+  "count": 70,
+  "lvl": "A2–B1"
+ },
+ {
+  "file": "samalla-kartalla-2-luku-1.json",
+  "pack": "Samalla kartalla 2 · Luku 1 — Arjen haasteita: jokapäiväinen elämä (B1)",
+  "count": 71,
+  "lvl": "A2–B1"
+ },
+ {
+  "file": "samalla-kartalla-2-luku-2.json",
+  "pack": "Samalla kartalla 2 · Luku 2 — Terveys ja sairaudet (B1)",
+  "count": 72,
+  "lvl": "A2–B1"
+ },
+ {
+  "file": "samalla-kartalla-2-luku-3.json",
+  "pack": "Samalla kartalla 2 · Luku 3 — Oppia ikä kaikki: työelämä ja elinikäinen oppiminen (B1)",
+  "count": 72,
+  "lvl": "A2–B1"
+ },
+ {
+  "file": "samalla-kartalla-2-luku-4.json",
+  "pack": "Samalla kartalla 2 · Luku 4 — Ajan hermolla: tiedotusvälineet (B1)",
+  "count": 72,
+  "lvl": "A2–B1"
+ },
+ {
+  "file": "samalla-kartalla-2-luku-5.json",
+  "pack": "Samalla kartalla 2 · Luku 5 — Kansalaisena yhteiskunnassa: yksilö ja yhteiskunta (B1)",
+  "count": 72,
+  "lvl": "A2–B1"
+ },
+ {
+  "file": "samalla-kartalla-2-luku-6.json",
+  "pack": "Samalla kartalla 2 · Luku 6 — Luonnon ehdoilla: luonto ja ympäristö (B1)",
+  "count": 72,
+  "lvl": "A2–B1"
+ },
+ {
+  "file": "samalla-kartalla-3-kokoelma.json",
+  "pack": "Samalla kartalla 3 · Kokoelma (Teema 1–13)",
+  "count": 795,
+  "lvl": "A2–B1"
+ },
+ {
+  "file": "samalla-kartalla-3-teema-1.json",
+  "pack": "Samalla kartalla 3 · Teema 1 — Koti ja asuminen (B1)",
+  "count": 64,
+  "lvl": "A2–B1"
+ },
+ {
+  "file": "samalla-kartalla-3-teema-10.json",
+  "pack": "Samalla kartalla 3 · Teema 10 — Terveys ja sairaudet (B1)",
+  "count": 61,
+  "lvl": "A2–B1"
+ },
+ {
+  "file": "samalla-kartalla-3-teema-11.json",
+  "pack": "Samalla kartalla 3 · Teema 11 — Tiedotusvälineet (B1)",
+  "count": 61,
+  "lvl": "A2–B1"
+ },
+ {
+  "file": "samalla-kartalla-3-teema-12.json",
+  "pack": "Samalla kartalla 3 · Teema 12 — Yksilö ja yhteiskunta (B1)",
+  "count": 61,
+  "lvl": "A2–B1"
+ },
+ {
+  "file": "samalla-kartalla-3-teema-13.json",
+  "pack": "Samalla kartalla 3 · Teema 13 — Luonto ja ympäristö (B1)",
+  "count": 61,
+  "lvl": "A2–B1"
+ },
+ {
+  "file": "samalla-kartalla-3-teema-2.json",
+  "pack": "Samalla kartalla 3 · Teema 2 — Perhe ja ihmissuhteet (B1)",
+  "count": 59,
+  "lvl": "A2–B1"
+ },
+ {
+  "file": "samalla-kartalla-3-teema-3.json",
+  "pack": "Samalla kartalla 3 · Teema 3 — Liikenne ja matkustaminen (B1)",
+  "count": 62,
+  "lvl": "A2–B1"
+ },
+ {
+  "file": "samalla-kartalla-3-teema-4.json",
+  "pack": "Samalla kartalla 3 · Teema 4 — Ostokset ja kuluttaminen (B1)",
+  "count": 61,
+  "lvl": "A2–B1"
+ },
+ {
+  "file": "samalla-kartalla-3-teema-5.json",
+  "pack": "Samalla kartalla 3 · Teema 5 — Harrastukset ja vapaa-aika (B1)",
+  "count": 61,
+  "lvl": "A2–B1"
+ },
+ {
+  "file": "samalla-kartalla-3-teema-6.json",
+  "pack": "Samalla kartalla 3 · Teema 6 — Työ ja ammatit (B1)",
+  "count": 61,
+  "lvl": "A2–B1"
+ },
+ {
+  "file": "samalla-kartalla-3-teema-7.json",
+  "pack": "Samalla kartalla 3 · Teema 7 — Työelämä ja työn muutokset (B1)",
+  "count": 61,
+  "lvl": "A2–B1"
+ },
+ {
+  "file": "samalla-kartalla-3-teema-8.json",
+  "pack": "Samalla kartalla 3 · Teema 8 — Monikulttuurisuus (B1)",
+  "count": 61,
+  "lvl": "A2–B1"
+ },
+ {
+  "file": "samalla-kartalla-3-teema-9.json",
+  "pack": "Samalla kartalla 3 · Teema 9 — Arjen haasteita (B1)",
+  "count": 61,
+  "lvl": "A2–B1"
+ }
+]

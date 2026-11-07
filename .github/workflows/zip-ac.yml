@@ -1,128 +1,236 @@
 name: zip-ac
 
-on:
+# Zip depoya hiç girmez: arşiv ya doğrudan bir https adresinden, ya bir release
+# ekinden, ya da önceki bir çalışmanın artefaktından indirilir; yalnızca
+# $RUNNER_TEMP altında açılır ve hedef dizine kopyalanır. Kullanılan zip,
+# izlenebilirlik için artefakt olarak saklanır; çalışma ağacına .zip yazılmaz.
+#
+# Tek iş akışı iki tasarımı birleştirir: hedef dizin (varsayılan sanat), release
+# ve artefakt desteği korunur; üstüne sertleştirme eklenir — arşiv bütünlüğü,
+# yol kaçışı (zip-slip) ve sembolik bağ reddi, .git ve .github/workflows
+# dışlama, eşzamanlılık kilidi.
+
+'on':
   workflow_dispatch:
     inputs:
       zip_url:
-        description: "Zip'in doğrudan https indirme adresi"
+        description: "Zip'in doğrudan https indirme adresi (artifact_run_id boşsa zorunlu)."
         type: string
         required: false
         default: ""
       release_surum:
-        description: "Release etiketi (boşsa en son sürüm)"
+        description: "Release etiketi (boşsa en son sürüm). Yalnızca release_dosya ile."
         type: string
         required: false
         default: ""
       release_dosya:
-        description: "Release ekinin adı; doluysa aranır"
+        description: "Release ekinin adı; doluysa arşiv release'ten indirilir."
         type: string
         required: false
         default: ""
       artifact_run_id:
-        description: "Zip artefaktını taşıyan çalışma id"
+        description: "Zip artefaktını taşıyan çalışma (run) kimliği."
         type: string
         required: false
         default: ""
       artifact_name:
-        description: "Artefakt adı (artefakt modu)"
+        description: "Artefakt adı (artefakt modunda)."
         type: string
         required: false
         default: "zip-paket"
       hedef:
-        description: "Zip'in kopyalanacağı depodaki dizin"
+        description: "Zip'in kopyalanacağı depo dizini (depo kökü için .)."
         type: string
         required: false
         default: "sanat"
       mesaj:
-        description: "Commit mesajı eki (isteğe bağlı)"
+        description: "Commit mesajı (boşsa varsayılan yazılır)."
         type: string
         required: false
         default: ""
 
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: zip-ac
+  cancel-in-progress: false
+
 jobs:
   ac:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-
+    timeout-minutes: 10
     steps:
-      - name: Depoyu klonla
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Zip edin
+      - name: Girdileri denetle
         env:
           ZIP_URL: ${{ inputs.zip_url }}
-          RELEASE_SURUM: ${{ inputs.release_surum }}
-          RELEASE_DOSYA: ${{ inputs.release_dosya }}
-          ARTIFACT_RUN_ID: ${{ inputs.artifact_run_id }}
-          ARTIFACT_NAME: ${{ inputs.artifact_name }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SURUM: ${{ inputs.release_surum }}
+          DOSYA: ${{ inputs.release_dosya }}
+          RUN_ID: ${{ inputs.artifact_run_id }}
+          HEDEF: ${{ inputs.hedef }}
         run: |
           set -euo pipefail
-          PAKET="$RUNNER_TEMP/paket.zip"
+          kaynak=0
+          if [ -n "$ZIP_URL" ]; then kaynak=$((kaynak + 1)); fi
+          if [ -n "$DOSYA" ]; then kaynak=$((kaynak + 1)); fi
+          if [ -n "$RUN_ID" ]; then kaynak=$((kaynak + 1)); fi
+          if [ "$kaynak" -ne 1 ]; then
+            echo "::error::Tek bir kaynak verilmeli: zip_url, release_dosya ya da artifact_run_id."
+            exit 2
+          fi
+          if [ -n "$SURUM" ] && [ -z "$DOSYA" ]; then
+            echo "::error::release_surum ancak release_dosya ile kullanılabilir."
+            exit 2
+          fi
+          case "$HEDEF" in
+            ""|"/"|"..") echo "::error::hedef geçersiz: '$HEDEF'"; exit 2 ;;
+            -*) echo "::error::hedef geçersiz: $HEDEF"; exit 2 ;;
+            .git|.git/*|*/.git|*/.git/*) echo "::error::hedef .git içeremez: $HEDEF"; exit 2 ;;
+          esac
+          echo "hedef=$HEDEF" >> "$GITHUB_ENV"
+          echo "Hedef dizin: $HEDEF"
 
-          if [ -n "$ZIP_URL" ]; then
-            echo "Indiriliyor: $ZIP_URL"
-            curl -sSL "$ZIP_URL" -o "$PAKET"
-          elif [ -n "$RELEASE_SURUM" ] || [ -n "$RELEASE_DOSYA" ]; then
-            REPO="${{ github.repository }}"
-            TAG="$RELEASE_SURUM"
-            if [ -z "$TAG" ]; then
-              TAG=$(gh api "repos/$REPO/releases/latest" --jq '.tag_name')
-            fi
-            if [ -n "$RELEASE_DOSYA" ]; then
-              gh release download "$TAG" -R "$REPO" -p "$RELEASE_DOSYA" -O "$PAKET"
-            else
-              gh release download "$TAG" -R "$REPO" -p "*.zip" -O "$PAKET"
-            fi
-          elif [ -n "$ARTIFACT_RUN_ID" ]; then
-            gh run download "$ARTIFACT_RUN_ID" -R "${{ github.repository }}" -n "$ARTIFACT_NAME" -D "$RUNNER_TEMP/art"
-            Z=$(find "$RUNNER_TEMP/art" -name "*.zip" | head -n 1)
-            [ -n "$Z" ] && mv "$Z" "$PAKET"
+      - name: Zip'i indir (URL)
+        if: inputs.zip_url != ''
+        env:
+          ZIP_URL: ${{ inputs.zip_url }}
+        run: |
+          set -euo pipefail
+          case "$ZIP_URL" in
+            https://*) ;;
+            *) echo "::error::Yalnızca https:// adresleri kabul edilir."; exit 2 ;;
+          esac
+          curl -fsSL --retry 3 --retry-delay 2 --max-time 300 \
+            -o "$RUNNER_TEMP/paket.zip" "$ZIP_URL"
+          echo "indirildi: $(wc -c < "$RUNNER_TEMP/paket.zip") bayt"
+
+      - name: Zip'i indir (release)
+        if: inputs.release_dosya != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SURUM: ${{ inputs.release_surum }}
+          DOSYA: ${{ inputs.release_dosya }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/release"
+          if [ -n "$SURUM" ]; then
+            gh release download "$SURUM" --repo "$GITHUB_REPOSITORY" \
+              --pattern "$DOSYA" --dir "$RUNNER_TEMP/release" --clobber
           else
-            echo "Kaynak belirtilmedi!"
+            gh release download --repo "$GITHUB_REPOSITORY" \
+              --pattern "$DOSYA" --dir "$RUNNER_TEMP/release" --clobber
+          fi
+          mapfile -t bulunan < <(find "$RUNNER_TEMP/release" -type f -iname '*.zip' | sort)
+          if [ "${#bulunan[@]}" -ne 1 ]; then
+            echo "::error::Release'te tam olarak bir zip bekleniyordu; bulunan: ${#bulunan[@]}"
             exit 1
           fi
+          cp "${bulunan[0]}" "$RUNNER_TEMP/paket.zip"
+          echo "release: ${bulunan[0]}"
 
-      - name: Zip ac ve kopyala
+      - name: Zip'i indir (artefakt)
+        if: inputs.artifact_run_id != ''
         env:
-          HEDEF: ${{ inputs.hedef }}
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ inputs.artifact_run_id }}
+          AD: ${{ inputs.artifact_name }}
         run: |
           set -euo pipefail
-          PAKET="$RUNNER_TEMP/paket.zip"
-          HEDEF_DIZIN="${HEDEF:-sanat}"
-          mkdir -p "$HEDEF_DIZIN"
-          UNPACK="$RUNNER_TEMP/unpack"
-          rm -rf "$UNPACK"
-          mkdir -p "$UNPACK"
-          unzip -q "$PAKET" -d "$UNPACK"
-          IC_ZIP=$(find "$UNPACK" -mindepth 1 -maxdepth 2 -name "*.zip" | head -n 1)
-          if [ -n "$IC_ZIP" ]; then
-            IC_UNPACK="$RUNNER_TEMP/ic_unpack"
-            rm -rf "$IC_UNPACK"
-            mkdir -p "$IC_UNPACK"
-            unzip -q "$IC_ZIP" -d "$IC_UNPACK"
-            KOK="$IC_UNPACK"
-          else
-            KOK="$UNPACK"
+          mkdir -p "$RUNNER_TEMP/artefakt"
+          gh run download "$RUN_ID" \
+            --repo "$GITHUB_REPOSITORY" \
+            --name "$AD" \
+            --dir "$RUNNER_TEMP/artefakt"
+          mapfile -t zips < <(find "$RUNNER_TEMP/artefakt" -type f -iname '*.zip' | sort)
+          if [ "${#zips[@]}" -ne 1 ]; then
+            echo "::error::Artefaktta tam olarak bir zip bekleniyordu; bulunan: ${#zips[@]}"
+            exit 1
           fi
-          ICOUT=$(find "$KOK" -mindepth 1 -maxdepth 1 -type d)
-          if [ $(echo "$ICOUT" | wc -l) -eq 1 ] && [ -n "$ICOUT" ]; then
-            KOK="$ICOUT"
-          fi
-          cp -r "$KOK"/* "$HEDEF_DIZIN"/
+          cp "${zips[0]}" "$RUNNER_TEMP/paket.zip"
+          echo "artefakt: ${zips[0]}"
 
-      - name: Degisiklik var mi
+      - name: Zip'i doğrula
+        run: |
+          set -euo pipefail
+          z="$RUNNER_TEMP/paket.zip"
+          [ -s "$z" ] || { echo "::error::Zip boş ya da indirilemedi."; exit 1; }
+          boyut=$(wc -c < "$z")
+          if [ "$boyut" -gt 26214400 ]; then
+            echo "::error::Zip 25 MB sınırını aşıyor: $boyut bayt"
+            exit 1
+          fi
+          unzip -t "$z" > /dev/null || { echo "::error::Zip bozuk (unzip -t başarısız)."; exit 1; }
+          if unzip -Z1 "$z" | grep -Eq '^/|^[A-Za-z]:|(^|/)\.\.(/|$)|\\'; then
+            echo "::error::Zip mutlak yol, .. ya da ters bölü içeriyor; güvenlik için durduruldu."
+            unzip -Z1 "$z" | grep -En '^/|^[A-Za-z]:|(^|/)\.\.(/|$)|\\' | head -5
+            exit 1
+          fi
+          if unzip -Z1 "$z" | grep -Eq '(^|/)\.github/workflows(/|$)'; then
+            echo "::error::Zip .github/workflows içeriyor; iş akışları zip ile değiştirilemez."
+            exit 1
+          fi
+          echo "doğrulandı: $boyut bayt, $(unzip -Z1 "$z" | wc -l) girdi"
+
+      - name: Kullanılan zip'i artefakt olarak sakla
+        uses: actions/upload-artifact@v4
+        with:
+          name: zip-ac-${{ github.run_id }}
+          path: ${{ runner.temp }}/paket.zip
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Zip'i geçici dizine aç
+        run: |
+          set -euo pipefail
+          src="$RUNNER_TEMP/acik"
+          rm -rf "$src"
+          mkdir -p "$src"
+          unzip -q -o "$RUNNER_TEMP/paket.zip" -d "$src"
+          # Sembolik bağ taşınmaz: hedef depoyu dışarıya bağlayan girdi kabul edilmez.
+          if find "$src" -type l -print -quit | grep -q .; then
+            echo "::error::Arşivde sembolik bağ var; güvenlik için durduruldu."
+            find "$src" -type l | head -5
+            exit 1
+          fi
+          # Arşiv tek bir üst dizin taşıyor ve adı hedefle aynıysa içine in.
+          mapfile -t ust < <(find "$src" -mindepth 1 -maxdepth 1)
+          if [ "${#ust[@]}" -eq 1 ] && [ -d "${ust[0]}" ] \
+             && [ "$(basename "${ust[0]}")" = "$(basename "$hedef")" ]; then
+            src="${ust[0]}"
+          fi
+          echo "SRC=$src" >> "$GITHUB_ENV"
+          echo "Kaynak kök: $src"
+          find "$src" -mindepth 1 -maxdepth 2 | head -20
+
+      - name: Hedef dizine kopyala
+        run: |
+          set -euo pipefail
+          mkdir -p "$hedef"
+          # .git ve iş akışları hiçbir koşulda kopyalanmaz; sembolik bağ taşınmaz.
+          rsync -a --no-links \
+            --exclude='.git/' \
+            --exclude='.github/workflows/' \
+            "$SRC"/ "$hedef"/
+          rm -rf "$hedef/.git"
+          if find "$hedef" -name '*.zip' -newermt '-1 hour' | grep -q .; then
+            echo "::error::Zip içeriği hedef dizine zip dosyası bıraktı; durduruldu."
+            exit 1
+          fi
+          git status --short -- "$hedef" | head -30
+
+      - name: Değişiklik var mı
         id: diff
-        env:
-          HEDEF: ${{ inputs.hedef }}
         run: |
           set -euo pipefail
-          HEDEF_DIZIN="${HEDEF:-sanat}"
-          git add -A -- "$HEDEF_DIZIN"
+          git add -A -- "$hedef"
           if git diff --cached --quiet; then
+            echo "Değişiklik yok (idempotent çıkış)."
             echo "var=false" >> "$GITHUB_OUTPUT"
           else
+            git diff --cached --stat
             echo "var=true" >> "$GITHUB_OUTPUT"
           fi
 
@@ -130,22 +238,25 @@ jobs:
         if: steps.diff.outputs.var == 'true'
         env:
           MESAJ: ${{ inputs.mesaj }}
-          HEDEF: ${{ inputs.hedef }}
         run: |
           set -euo pipefail
-          HEDEF_DIZIN="${HEDEF:-sanat}"
+          if git diff --cached --name-only | grep -qE '\.zip$'; then
+            echo "::error::Commit'e zip girmiş; iş durduruldu."
+            exit 1
+          fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          ILETI="${MESAJ:-zip-ac: $HEDEF_DIZIN icerigi guncellendi}"
-          git commit -m "$ILETI"
-          git push
+          ileti="${MESAJ:-zip-ac: $hedef içeriği zip arşivinden güncellendi}"
+          git commit -m "$ileti"
+          git push origin "HEAD:${GITHUB_REF_NAME:-main}"
 
-      - name: Ozet
+      - name: Özet
         if: always()
-        env:
-          HEDEF: ${{ inputs.hedef }}
         run: |
-          HEDEF_DIZIN="${HEDEF:-sanat}"
-          echo "### zip-ac" >> "$GITHUB_STEP_SUMMARY"
-          echo "- hedef: \`$HEDEF_DIZIN\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "- degisiklik: \`${{ steps.diff.outputs.var }}\`" >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo "### zip-ac"
+            echo ""
+            echo "- hedef: \`$hedef\`"
+            echo "- zip: \`$RUNNER_TEMP/paket.zip\` (depoya yazılmadı)"
+            echo "- değişiklik: \`${{ steps.diff.outputs.var || 'yok' }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"

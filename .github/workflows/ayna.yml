@@ -1,0 +1,58 @@
+name: ayna
+
+# Yedek deposunu site main'e eşitler. .github/workflows/ dizinine dokunmaz:
+# GITHUB_TOKEN bu dizine yazamaz, bu yüzden ayna.yml burada elle yönetilir.
+
+'on':
+  workflow_dispatch:
+  schedule:
+    - cron: '17 */6 * * *'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ayna
+  cancel-in-progress: false
+
+jobs:
+  ayna:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Site main'i indir
+        run: |
+          set -euo pipefail
+          git fetch -q --no-tags --depth=1 \
+            https://github.com/tnygnz/suomi-kartat.git \
+            "+refs/heads/main:refs/remotes/kaynak/main"
+
+      - name: Eşitle (iş akışları hariç)
+        run: |
+          set -euo pipefail
+          git archive refs/remotes/kaynak/main \
+            | tar -x --exclude='.github/workflows/*' -C "$GITHUB_WORKSPACE"
+          git ls-tree -r --name-only refs/remotes/kaynak/main | sort > "$RUNNER_TEMP/kaynak.txt"
+          git ls-files | grep -v '^\.github/workflows/' | sort > "$RUNNER_TEMP/yedek.txt" || true
+          comm -13 "$RUNNER_TEMP/kaynak.txt" "$RUNNER_TEMP/yedek.txt" | while IFS= read -r f; do
+            [ -n "$f" ] || continue
+            git rm -q -f --cached "$f" 2>/dev/null || true
+            rm -f -- "$f"
+          done
+
+      - name: Commit + push
+        run: |
+          set -euo pipefail
+          if git diff --quiet && git diff --cached --quiet; then
+            echo "ayna: değişiklik yok"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "ayna: site main ile eşitlendi ($(git rev-parse --short refs/remotes/kaynak/main))"
+          git push origin HEAD:main
