@@ -1,0 +1,67 @@
+name: denetim
+
+# Haftalık tam denetim: testler, araçların yerinde olması, yedeğin site ile
+# eşitliği, canlı sitenin repo ile aynılığı. Yazma yapmaz; uyuşmazlıkta kırmızı.
+# .github/workflows/ karşılaştırma dışıdır: GITHUB_TOKEN o dizine yazamaz.
+
+'on':
+  workflow_dispatch:
+  schedule:
+    - cron: '17 4 * * 1'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: denetim
+  cancel-in-progress: false
+
+jobs:
+  denetim:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Araçlar yerinde mi
+        run: |
+          set -euo pipefail
+          test -x tek.sh            || { echo "::error::tek.sh yok veya çalıştırılamıyor"; exit 1; }
+          test -f tools/ayna.sh     || { echo "::error::tools/ayna.sh yok"; exit 1; }
+          test -f .github/workflows/denetim.yml || { echo "::error::denetim.yml yok"; exit 1; }
+          echo "araçlar: tek.sh, tools/ayna.sh, denetim.yml yerinde"
+
+      - name: Testler
+        run: node sanat/tests/run.js
+
+      - name: Yedek site ile aynı mı
+        run: |
+          set -euo pipefail
+          git fetch -q --no-tags --depth=1 \
+            https://github.com/tnygnz/Opin-Suomen.git "+refs/heads/main:refs/remotes/yedek/main"
+          fark=$(git diff --name-status HEAD refs/remotes/yedek/main \
+                   -- ':(exclude).github/workflows' || true)
+          if [ -n "$fark" ]; then
+            echo "::error::Yedek site ile aynı değil"
+            printf '%s\n' "$fark" | head -20
+            exit 1
+          fi
+          echo "yedek: site ile aynı (iş akışları hariç)"
+
+      - name: Canlı site repo ile aynı mı
+        run: |
+          set -euo pipefail
+          base="https://tnygnz.github.io/suomi-kartat/sanat"
+          kod=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "$base/")
+          [ "$kod" = "200" ] || { echo "::error::Canlı site HTTP $kod"; exit 1; }
+          fark=""
+          for f in index.html app.js styles.css data.js; do
+            [ -f "sanat/$f" ] || continue
+            canli=$(curl -s -H 'Cache-Control: no-cache' --max-time 20 "$base/$f" | sha256sum | cut -d' ' -f1)
+            [ "$canli" = "$(sha256sum "sanat/$f" | cut -d' ' -f1)" ] || fark="$fark $f"
+          done
+          if [ -n "$fark" ]; then
+            echo "::warning::Canlı site repodan farklı:$fark (Pages gecikmesi olabilir)"
+          else
+            echo "canlı: repo ile aynı"
+          fi
