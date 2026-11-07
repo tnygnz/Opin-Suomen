@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f4f1e9">
+<title>Sanat — Fince ↔ Türkçe</title>
+<link rel="icon" href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="16" fill="%232f6fed"/><text x="32" y="45" font-size="36" font-family="sans-serif" font-weight="700" fill="%23fff" text-anchor="middle">S</text></svg>'>
+<link rel="preload" href="fonts/inter.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/fraunces.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Satır içi SVG ikon seti: tek tanım, her yerde <use> ile çağrılır. -->
+  <svg class="svg-sprite" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">
+    <symbol id="i-study" viewBox="0 0 24 24"><rect x="3" y="5" width="13" height="14" rx="2"/><path d="M18 8h2v13H9"/></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></symbol>
+    <symbol id="i-tips" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.4 10.9c.3.2.4.5.4.9V16h6v-1.2c0-.4.1-.7.4-.9A6 6 0 0 0 12 3Z"/></symbol>
+    <symbol id="i-stats" viewBox="0 0 24 24"><path d="M4 20V12M10 20V5M16 20v-6M22 20H2"/></symbol>
+    <symbol id="i-flame" viewBox="0 0 24 24"><path d="M12 3s5 4.6 5 9a5 5 0 0 1-10 0c0-1.9.9-3.4 2.4-4.8"/><path d="M12 13c1 1.2 1.6 2 1.6 2.9a1.6 1.6 0 1 1-3.2 0c0-.9.6-1.7 1.6-2.9Z"/></symbol>
+    <symbol id="i-speaker" viewBox="0 0 24 24"><path d="M4 10v4h3l4 3.5v-11L7 10H4Z"/><path d="M15 9.5a4 4 0 0 1 0 5M17.5 7a7 7 0 0 1 0 10"/></symbol>
+    <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></symbol>
+    <symbol id="i-kart" viewBox="0 0 24 24"><rect x="3" y="5" width="13" height="14" rx="2"/><path d="M18 8h2v13H9"/></symbol>
+    <symbol id="i-test" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+    <symbol id="i-yaz" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="11" rx="2"/><path d="M6 11h.01M10 11h.01M14 11h.01M18 11h.01M7 15h10"/></symbol>
+  </svg>
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">S</span>
+      <div class="brand-text">
+        <strong>Sanat</strong>
+        <small>Fince ↔ Türkçe</small>
+      </div>
+    </div>
+    <div class="streak" title="Günlük seri">
+      <svg class="ico ico-flame" aria-hidden="true" focusable="false"><use href="#i-flame"/></svg><span id="streakDays">0</span>
+    </div>
+  </header>
+
+  <main id="app"></main>
+
+  <p id="srStatus" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></p>
+
+  <nav class="tabs" id="tabs">
+    <button type="button" data-tab="study" class="active"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-study"/></svg><span>Çalış</span></button>
+    <button type="button" data-tab="list"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-list"/></svg><span>Liste</span></button>
+    <button type="button" data-tab="tips"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-tips"/></svg><span>İpuçları</span></button>
+    <button type="button" data-tab="stats"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-stats"/></svg><span>İstatistik</span></button>
+  </nav>
+
+  <div id="toast" class="toast" role="status"></div>
+
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
