@@ -1,3 +1,16 @@
+// --- Faz 1: PWA & Speech Synthesis ---
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').catch(() => {});
+}
+
+function speakFi(text) {
+  if (!('speechSynthesis' in window)) return;
+  window.speechSynthesis.cancel();
+  var u = new SpeechSynthesisUtterance(text);
+  u.lang = 'fi-FI';
+  u.rate = 0.9;
+  window.speechSynthesis.speak(u);
+}
 /* Sanat — kişisel Fince ↔ Türkçe çalışma uygulaması
    Tamamen yerel çalışır: ağ isteği, reklam, analitik, uygulama içi satın alma yok.
    Tüm ilerleme localStorage'da tutulur. */
