@@ -1,0 +1,13 @@
+{
+  "name": "suomi-tr-app",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Fince–Türkçe kişisel kelime uygulaması (statik, çalışma zamanı bağımlılığı yok)",
+  "scripts": {
+    "test": "node tests/run.mjs"
+  },
+  "devDependencies": {
+    "jsdom": "^26.1.0"
+  }
+}
