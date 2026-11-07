@@ -8,7 +8,7 @@
 <link rel="icon" href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="16" fill="%232f6fed"/><text x="32" y="45" font-size="36" font-family="sans-serif" font-weight="700" fill="%23fff" text-anchor="middle">S</text></svg>'>
 <link rel="preload" href="fonts/inter.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/fraunces.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="styles.css?v=b867832584">
 </head>
 <body>
   <!-- Satır içi SVG ikon seti: tek tanım, her yerde <use> ile çağrılır. -->
@@ -23,6 +23,7 @@
     <symbol id="i-kart" viewBox="0 0 24 24"><rect x="3" y="5" width="13" height="14" rx="2"/><path d="M18 8h2v13H9"/></symbol>
     <symbol id="i-test" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
     <symbol id="i-yaz" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="11" rx="2"/><path d="M6 11h.01M10 11h.01M14 11h.01M18 11h.01M7 15h10"/></symbol>
+    <symbol id="i-pack" viewBox="0 0 24 24"><path d="M3 8h18v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8Z"/><path d="m3 8 3-4h12l3 4M12 4v5"/></symbol>
   </svg>
 
   <header class="topbar">
@@ -45,13 +46,14 @@
   <nav class="tabs" id="tabs">
     <button type="button" data-tab="study" class="active"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-study"/></svg><span>Çalış</span></button>
     <button type="button" data-tab="list"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-list"/></svg><span>Liste</span></button>
+    <button type="button" data-tab="packs"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-pack"/></svg><span>Paketler</span></button>
     <button type="button" data-tab="tips"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-tips"/></svg><span>İpuçları</span></button>
     <button type="button" data-tab="stats"><svg class="ico" aria-hidden="true" focusable="false"><use href="#i-stats"/></svg><span>İstatistik</span></button>
   </nav>
 
   <div id="toast" class="toast" role="status"></div>
 
-  <script src="data.js"></script>
-  <script src="app.js"></script>
+  <script src="data.js?v=b867832584"></script>
+  <script src="app.js?v=b867832584"></script>
 </body>
 </html>

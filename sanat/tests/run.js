@@ -10,7 +10,7 @@
 const { spawnSync } = require("child_process");
 const path = require("path");
 
-const files = ["smoke.test.js", "kbd-hint.test.js"];
+const files = ["smoke.test.js", "kbd-hint.test.js", "packs.test.js", "import.test.js"];
 let failed = 0;
 
 files.forEach(function (file) {
