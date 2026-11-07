@@ -1,0 +1,79 @@
+{
+  "app": "suomi-tr",
+  "pack": "Samalla kartalla 3 · Teema 5 — Harrastukset ja vapaa-aika (B1)",
+  "exportedAt": "2026-11-06T21:10:00.000Z",
+  "state": {
+    "cards": {},
+    "custom": [
+      {"fi":"pitkäveteinen","tr":"sıkıcı, uzadıkça uzayan","lvl":"B1","cat":"sifat","ex":["Kokous oli pitkäveteinen ja kesti kolme tuntia.","Toplantı sıkıcıydı ve üç saat sürdü."]},
+      {"fi":"yksitoikkoinen","tr":"tekdüze, monoton","lvl":"B1","cat":"sifat"},
+      {"fi":"vaarallinen","tr":"tehlikeli","lvl":"A2","cat":"sifat"},
+      {"fi":"huvittava","tr":"eğlendirici, gülünç","lvl":"B1","cat":"sifat"},
+      {"fi":"koominen","tr":"komik, gülünç","lvl":"B1","cat":"sifat"},
+      {"fi":"melankolinen","tr":"melankolik, hüzünlü","lvl":"B1","cat":"sifat"},
+      {"fi":"surumielinen","tr":"hüzünlü, kederli","lvl":"B1","cat":"sifat"},
+      {"fi":"epäkohtelias","tr":"kaba, nezaketsiz","lvl":"B1","cat":"sifat"},
+      {"fi":"epäonnistunut","tr":"başarısız, tutmamış","lvl":"B1","cat":"sifat"},
+      {"fi":"epäterveellinen","tr":"sağlıksız","lvl":"B1","cat":"sifat"},
+      {"fi":"epärehellinen","tr":"dürüst olmayan","lvl":"B1","cat":"sifat"},
+      {"fi":"väritön","tr":"renksiz, soluk","lvl":"B1","cat":"sifat"},
+      {"fi":"epäsiisti","tr":"dağınık, pis","lvl":"B1","cat":"sifat"},
+      {"fi":"tuntematon","tr":"bilinmeyen, tanınmayan","lvl":"A2","cat":"sifat"},
+
+      {"fi":"treenata","tr":"antrenman yapmak, çalışmak (treenata + mitä)","lvl":"A2","cat":"fiiller"},
+      {"fi":"kokata","tr":"yemek pişirmek","lvl":"A2","cat":"fiiller"},
+      {"fi":"löhötä","tr":"yayılıp tembellik etmek","lvl":"B1","cat":"fiiller","ex":["Lomalla haluan vain löhötä sohvalla.","Tatilde sadece kanepede yayılıp tembellik etmek istiyorum."]},
+      {"fi":"hommata","tr":"edinmek, halletmek","lvl":"B1","cat":"fiiller"},
+      {"fi":"huvitella","tr":"eğlenmek, hoş vakit geçirmek","lvl":"B1","cat":"fiiller"},
+      {"fi":"kutoa","tr":"örmek","lvl":"B1","cat":"fiiller"},
+      {"fi":"pudottaa","tr":"düşürmek","lvl":"B1","cat":"fiiller"},
+      {"fi":"valloittaa","tr":"fethetmek, ele geçirmek","lvl":"B1","cat":"fiiller"},
+      {"fi":"hukkua","tr":"boğulmak","lvl":"B1","cat":"fiiller"},
+      {"fi":"ratsastaa","tr":"ata binmek (ratsastaa + millä)","lvl":"A2","cat":"fiiller"},
+
+      {"fi":"näytelmä","tr":"tiyatro oyunu","lvl":"A2","cat":"kultur"},
+      {"fi":"orkesteri","tr":"orkestra","lvl":"B1","cat":"kultur"},
+      {"fi":"kapellimestari","tr":"orkestra şefi","lvl":"B1","cat":"kultur"},
+      {"fi":"katsomo","tr":"tribün, seyirci alanı","lvl":"B1","cat":"kultur"},
+      {"fi":"taidenäyttely","tr":"sanat sergisi","lvl":"B1","cat":"kultur"},
+      {"fi":"ensi-ilta","tr":"prömiyer, gala","lvl":"B1","cat":"kultur","ex":["Näytelmän ensi-ilta on ensi lauantaina.","Oyunun prömiyeri önümüzdeki cumartesi."]},
+      {"fi":"esirippu","tr":"sahne perdesi","lvl":"B1","cat":"kultur"},
+      {"fi":"päärooli","tr":"başrol","lvl":"B1","cat":"kultur"},
+      {"fi":"kuiskaaja","tr":"suflör","lvl":"B1","cat":"kultur"},
+      {"fi":"kuoro","tr":"koro","lvl":"B1","cat":"kultur"},
+      {"fi":"sirkus","tr":"sirk","lvl":"A2","cat":"kultur"},
+      {"fi":"taideteos","tr":"sanat eseri","lvl":"B1","cat":"kultur"},
+      {"fi":"soitin","tr":"çalgı, enstrüman","lvl":"B1","cat":"kultur"},
+      {"fi":"sello","tr":"çello","lvl":"B1","cat":"kultur"},
+      {"fi":"haitari","tr":"akordeon","lvl":"B1","cat":"kultur"},
+      {"fi":"huilu","tr":"flüt","lvl":"B1","cat":"kultur"},
+      {"fi":"kantele","tr":"kantele (Fin çalgısı)","lvl":"B1","cat":"kultur"},
+
+      {"fi":"vasara","tr":"çekiç","lvl":"B1","cat":"ev"},
+      {"fi":"ruuvimeisseli","tr":"tornavida","lvl":"B1","cat":"ev"},
+      {"fi":"pihdit","tr":"pense, kerpeten","lvl":"B1","cat":"ev"},
+      {"fi":"saha","tr":"testere","lvl":"B1","cat":"ev"},
+
+      {"fi":"mämmi","tr":"mämmi (çavdar maltı tatlısı)","lvl":"B1","cat":"yemek"},
+      {"fi":"leivonnainen","tr":"hamur işi, kurabiye","lvl":"B1","cat":"yemek"},
+      {"fi":"voisarvi","tr":"kruvasan","lvl":"B1","cat":"yemek"},
+
+      {"fi":"hirvi","tr":"geyik, mus","lvl":"A2","cat":"doga"},
+      {"fi":"sateenkaari","tr":"gökkuşağı","lvl":"B1","cat":"doga"},
+
+      {"fi":"arvoitus","tr":"bilmece","lvl":"B1","cat":"okul","ex":["Lasten oli vaikea ratkaista arvoitus.","Çocukların bilmeceyi çözmesi zordu."]},
+
+      {"fi":"vapaaehtoistyö","tr":"gönüllü iş, gönüllü çalışma","lvl":"B1","cat":"yhteiskunta"},
+      {"fi":"talkootyö","tr":"imece","lvl":"B1","cat":"yhteiskunta","ex":["Naapurit tekivät talkootyönä uuden leikkipuiston.","Komşular yeni oyun parkını imece usulü yaptı."]},
+
+      {"fi":"sohvaperuna","tr":"kanepede yatan tembel (deyim)","lvl":"B1","cat":"ilmaisut"},
+      {"fi":"penkkiurheilija","tr":"koltuk sporseveri","lvl":"B1","cat":"ilmaisut","ex":["Hän on penkkiurheilija, ei itse harrasta liikuntaa.","O bir koltuk sporseveri; kendisi spor yapmıyor."]},
+      {"fi":"vahingossa","tr":"yanlışlıkla, kazara","lvl":"B1","cat":"ilmaisut"},
+      {"fi":"vilpittömästi","tr":"içtenlikle, samimiyetle","lvl":"B1","cat":"ilmaisut"},
+      {"fi":"arki","tr":"hafta içi, sıradan gün","lvl":"A2","cat":"ilmaisut"},
+      {"fi":"pyhä","tr":"kutsal gün, tatil günü","lvl":"B1","cat":"ilmaisut"},
+      {"fi":"etukäteen","tr":"önceden, peşin","lvl":"B1","cat":"ilmaisut"},
+      {"fi":"jälkeenpäin","tr":"sonradan, sonra","lvl":"B1","cat":"ilmaisut"}
+    ]
+  }
+}
