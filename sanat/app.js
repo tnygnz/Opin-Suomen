@@ -1,3 +1,39 @@
+// --- Faz 3: Mini Oyunlar (Matching Game) ---
+function startMatchingGame(wordList) {
+  if (!wordList || wordList.length < 6) return;
+  var sample = wordList.slice(0, 6);
+  var cards = [];
+  
+  sample.forEach(function(item, idx) {
+    cards.push({ id: idx, text: item.fi || item.word, type: 'fi' });
+    cards.push({ id: idx, text: item.tr || item.meaning, type: 'tr' });
+  });
+  
+  cards.sort(function() { return 0.5 - Math.random(); });
+  window.currentMatchCards = cards;
+  window.selectedMatchCard = null;
+}
+
+function checkMatchSelection(cardIdx, element) {
+  var card = window.currentMatchCards[cardIdx];
+  if (!card) return;
+  
+  if (!window.selectedMatchCard) {
+    window.selectedMatchCard = { card: card, el: element };
+    element.classList.add('selected');
+  } else {
+    var prev = window.selectedMatchCard;
+    if (prev.card.id === card.id && prev.card.type !== card.type) {
+      element.classList.add('matched');
+      prev.el.classList.add('matched');
+      if (typeof speakFi === 'function' && card.type === 'fi') speakFi(card.text);
+    } else {
+      element.classList.remove('selected');
+      prev.el.classList.remove('selected');
+    }
+    window.selectedMatchCard = null;
+  }
+}
 // --- Faz 2: SRS Öğrenme Motoru ---
 var SRS_KEY = 'suomi_srs_data_v1';
 
