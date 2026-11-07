@@ -1,9 +1,0 @@
-{
-  "name": "sanat",
-  "version": "1.0.0",
-  "private": true,
-  "description": "Kişisel Fince ↔ Türkçe çalışma uygulaması. Statik site; testler bağımlılıksız.",
-  "scripts": {
-    "test": "node tests/run.js"
-  }
-}
