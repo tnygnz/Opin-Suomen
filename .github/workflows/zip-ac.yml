@@ -1,6 +1,8 @@
 name: zip-ac
 
 # Zip depoya hiç girmez: arşiv ya doğrudan bir https adresinden ya da önceki bir
+cd ~/Suomen-kielen-kartta
+nano .github/workflows/zip-ac.yml
 # çalışmanın artefaktından indirilir, yalnızca $RUNNER_TEMP altında açılır ve
 # hedef dizine kopyalanır. Kullanılan zip, izlenebilirlik için artefakt olarak
 # saklanır; çalışma ağacına .zip yazılmaz.
@@ -210,7 +212,9 @@ jobs:
           MESAJ: ${{ inputs.mesaj }}
         run: |
           set -euo pipefail
-         '\.zip$'; then
+        O
+X
+
         
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
