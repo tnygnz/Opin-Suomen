@@ -1,4 +1,4 @@
-const CACHE_NAME = 'suomi-sanat-v1';
+const CACHE_NAME = 'suomi-sanat-v2';
 const ASSETS = [
   './',
   './index.html',
