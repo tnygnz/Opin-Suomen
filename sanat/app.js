@@ -21,6 +21,7 @@
   var tab = "study";
   var listQuery = "";
   var listLimit = 200;
+  var listLimit = 200;
   var listCat = "";
   /* Rekor tablosundan dönen oturumun kısa özeti: kalıcı değil, ~9 sn sonra silinir. */
   var recSummary = null;
@@ -1387,7 +1388,7 @@
 
     var search = document.getElementById("search");
     search.addEventListener("input", function () {
-      listQuery = this.value;
+      listQuery = this.value; listLimit = 200;
       fillRows();
     });
     fillRows();
