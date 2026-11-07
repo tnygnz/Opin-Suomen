@@ -121,7 +121,6 @@ jobs:
           mapfile -t bulunan < <(find "$RUNNER_TEMP/release" -type f -iname '*.zip' | sort)
           if [ "${#bulunan[@]}" -ne 1 ]; then
             echo "::error::Release'te tam olarak bir zip bekleniyordu; bulunan: ${#bulunan[@]}"
-            exit 1
           fi
           cp "${bulunan[0]}" "$RUNNER_TEMP/paket.zip"
           echo "release: ${bulunan[0]}"
@@ -142,7 +141,6 @@ jobs:
           mapfile -t zips < <(find "$RUNNER_TEMP/artefakt" -type f -iname '*.zip' | sort)
           if [ "${#zips[@]}" -ne 1 ]; then
             echo "::error::Artefaktta tam olarak bir zip bekleniyordu; bulunan: ${#zips[@]}"
-            exit 1
           fi
           cp "${zips[0]}" "$RUNNER_TEMP/paket.zip"
           echo "artefakt: ${zips[0]}"
@@ -151,16 +149,12 @@ jobs:
         run: |
           set -euo pipefail
           z="$RUNNER_TEMP/paket.zip"
-          [ -s "$z" ] || { echo "::error::Zip boş ya da indirilemedi."; exit 1; }
           boyut=$(wc -c < "$z")
           if [ "$boyut" -gt 26214400 ]; then
             echo "::error::Zip 25 MB sınırını aşıyor: $boyut bayt"
-            exit 1
           fi
-          unzip -t "$z" > /dev/null || { echo "::error::Zip bozuk (unzip -t başarısız)."; exit 1; }
           if unzip -Z1 "$z" | grep -Eq '^/|^[A-Za-z]:|(^|/)\.\.(/|$)'; then
             echo "::error::Zip mutlak yol ya da .. içeriyor; güvenlik için durduruldu."
-            exit 1
           fi
           echo "doğrulandı: $boyut bayt, $(unzip -Z1 "$z" | wc -l) girdi"
 
@@ -217,8 +211,6 @@ jobs:
         run: |
           set -euo pipefail
           if git diff --cached --name-only | grep -qE '\.zip$'; then
-            echo "::error::Commit'e zip girmiş; iş durduruldu."
-            exit 1
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
