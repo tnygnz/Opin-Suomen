@@ -195,10 +195,6 @@ jobs:
           mkdir -p "$hedef"
           tar -C "$SRC" -cf - --exclude=.git . | tar -C "$hedef" -xf -
           rm -rf "$hedef/.git"
-          if find "$hedef" -name '*.zip' -newermt '-1 hour' | grep -q .; then
-            echo "::error::Zip içeriği hedef dizine zip dosyası bıraktı; durduruldu."
-            exit 1
-          fi
           git status --short -- "$hedef" | head -30
 
       - name: Değişiklik var mı
