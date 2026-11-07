@@ -1,3 +1,35 @@
+// --- Faz 2: SRS Öğrenme Motoru ---
+var SRS_KEY = 'suomi_srs_data_v1';
+
+function getSRSData() {
+  try {
+    return JSON.parse(localStorage.getItem(SRS_KEY)) || {};
+  } catch (e) {
+    return {};
+  }
+}
+
+function saveSRSScore(wordId, quality) {
+  // quality: 1 (Zor/Unuttum), 3 (Normal), 5 (Kolay/Öğrendim)
+  var data = getSRSData();
+  var item = data[wordId] || { interval: 1, reps: 0, ease: 2.5, dueDate: Date.now() };
+  
+  if (quality >= 3) {
+    if (item.reps === 0) item.interval = 1;
+    else if (item.reps === 1) item.interval = 6;
+    else item.interval = Math.round(item.interval * item.ease);
+    item.reps += 1;
+  } else {
+    item.reps = 0;
+    item.interval = 1;
+  }
+  
+  item.ease = Math.max(1.3, item.ease + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02)));
+  item.dueDate = Date.now() + item.interval * 24 * 60 * 60 * 1000;
+  
+  data[wordId] = item;
+  localStorage.setItem(SRS_KEY, JSON.stringify(data));
+}
 // --- Faz 1: PWA & Speech Synthesis ---
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js').catch(() => {});
