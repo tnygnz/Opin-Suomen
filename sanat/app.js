@@ -1,3 +1,38 @@
+// --- Faz 4: Data Export & Import Engine ---
+function exportUserData() {
+  var srsData = getSRSData();
+  var favs = localStorage.getItem('suomi_favs_v1') || '[]';
+  var payload = {
+    version: '1.0',
+    timestamp: Date.now(),
+    srs: srsData,
+    favorites: JSON.parse(favs)
+  };
+  
+  var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(payload));
+  var downloadAnchor = document.createElement('a');
+  downloadAnchor.setAttribute("href", dataStr);
+  downloadAnchor.setAttribute("download", "suomi_progress_backup.json");
+  document.body.appendChild(downloadAnchor);
+  downloadAnchor.click();
+  downloadAnchor.remove();
+}
+
+function importUserData(jsonText) {
+  try {
+    var parsed = JSON.parse(jsonText);
+    if (parsed.srs) {
+      localStorage.setItem(SRS_KEY, JSON.stringify(parsed.srs));
+    }
+    if (parsed.favorites) {
+      localStorage.setItem('suomi_favs_v1', JSON.stringify(parsed.favorites));
+    }
+    alert('İlerlemeniz başarıyla yüklendi!');
+    window.location.reload();
+  } catch (e) {
+    alert('Geçersiz yedek dosyası!');
+  }
+}
 // --- Faz 3: Mini Oyunlar (Matching Game) ---
 function startMatchingGame(wordList) {
   if (!wordList || wordList.length < 6) return;
