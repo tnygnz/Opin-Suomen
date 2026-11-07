@@ -210,7 +210,7 @@ jobs:
           MESAJ: ${{ inputs.mesaj }}
         run: |
           set -euo pipefail
-          if git diff --cached --name-only | grep -qE '\.zip$'; then
+         '\.zip$'; then
         
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -228,3 +228,5 @@ jobs:
             echo "- zip: \`$RUNNER_TEMP/paket.zip\` (depoya yazılmadı)"
             echo "- değişiklik: \`${{ steps.diff.outputs.var || 'yok' }}\`"
           } >> "$GITHUB_STEP_SUMMARY"
+X
+
